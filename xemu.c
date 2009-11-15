@@ -9,11 +9,7 @@
 #include "elf.h"
 
 
-extern void segfault_handler(int);
-
-
-volatile uint32_t *access_this = NULL;
-uint32_t ft = 42;
+void segfault_handler(int, struct sigcontext);
 
 
 int main(int argc, char *argv[])
@@ -21,6 +17,7 @@ int main(int argc, char *argv[])
     FILE *kernel;
     void *krnl, *base, *rp;
     int lof, size;
+    stack_t stk;
 
     if (argc != 2)
     {
@@ -71,6 +68,14 @@ int main(int argc, char *argv[])
 
     printf("Valid format, loading...\n");
 
+    //128 MB mappen (außer die ersten 64 kB, die erlaubt Linux uns nicht)
+    rp = mmap((void *)0x00010000, 0x07FF0000, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+    if ((rp == MAP_FAILED) || (rp != (void *)0x00010000))
+    {
+        printf("Could not allocate 128 MB.\n");
+        return EXIT_FAILURE;
+    }
+
     Elf32_Phdr *prg_hdr = (Elf32_Phdr *)((uintptr_t)krnl + elf_hdr->e_phoff);
     for (int i = 0; i < elf_hdr->e_phnum; i++)
     {
@@ -81,16 +86,10 @@ int main(int argc, char *argv[])
         base = (void *)(prg_hdr[i].p_vaddr & 0xFFFFF000);
         size = prg_hdr[i].p_memsz + (prg_hdr[i].p_vaddr & 0x00000FFF);
         printf(" -> padded to %i@0x%08X\n", size, (unsigned int)base);
-        rp = mmap(base, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-        if ((rp == MAP_FAILED) || (rp != base))
-        {
-            printf("Could not map that. (returned 0x%08X)\n", (unsigned int)rp);
-            return EXIT_FAILURE;
-        }
         memset((void *)prg_hdr[i].p_vaddr, 0, prg_hdr[i].p_memsz);
         if (!prg_hdr[i].p_filesz)
             continue;
-        memcpy((void *)prg_hdr[i].p_vaddr, (const void *)((uintptr_t)base + prg_hdr[i].p_offset), prg_hdr[i].p_filesz);
+        memcpy((void *)prg_hdr[i].p_vaddr, (const void *)((uintptr_t)krnl + prg_hdr[i].p_offset), prg_hdr[i].p_filesz);
     }
 
     printf("Load done.\n");
@@ -101,37 +100,27 @@ int main(int argc, char *argv[])
 
     printf("(we have no chance to survive, making our segfault handler)\n");
 
-    signal(SIGSEGV, &segfault_handler);
+    signal(SIGSEGV, (void (*)(int))&segfault_handler);
+    stk.ss_sp = mmap((void *)0x7F000000, SIGSTKSZ, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+    stk.ss_size = SIGSTKSZ;
+    stk.ss_flags = 0;
+    sigaltstack(&stk, NULL);
 
     printf("\n");
 
-    printf("%i\n", *access_this);
-
-//    asm volatile ("jmp *%%ebx" :: "b"(elf_hdr->e_entry));
+    asm volatile ("jmp *%%ebx" :: "b"(elf_hdr->e_entry));
 
     return EXIT_SUCCESS;
 }
 
-void _c_segfault_handler(uint32_t *esp)
+void segfault_handler(int num, struct sigcontext ctx)
 {
-    static int once_called = 0;
+    uint8_t *instr;
 
-    if (once_called++)
-    {
-        printf("Oooops.\n");
-        for (;;);
-        exit(SIGABRT);
-    }
+    printf("Segfault. All our base are belong to the OS.\n");
+    printf("0x%08X\n", (unsigned int)ctx.eip);
+    instr = (uint8_t *)ctx.eip;
+    printf("Instruction: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", instr[0], instr[1], instr[2], instr[3], instr[4], instr[5]);
 
-    printf("All our base are belong to the OS.\n");
-
-    printf("=================\n");
-
-    printf("Backtrace fun with Binky!\n");
-
-    printf("ESP: 0x%08X; EIP: 0x%08X\n", (unsigned int)esp, *esp);
-
-    access_this = &ft;
-
-//    exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
 }
