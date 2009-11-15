@@ -117,10 +117,22 @@ void segfault_handler(int num, struct sigcontext ctx)
 {
     uint8_t *instr;
 
-    printf("Segfault. All our base are belong to the OS.\n");
+    printf("Unhandled segfault. All our base are belong to the OS.\n");
     printf("0x%08X\n", (unsigned int)ctx.eip);
     instr = (uint8_t *)ctx.eip;
     printf("Instruction: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", instr[0], instr[1], instr[2], instr[3], instr[4], instr[5]);
+
+    printf("Dump of 0xB8000:\n");
+    char *base = (char *)0xB8000;
+    for (int y = 0; y < 25; y++)
+    {
+        for (int x = 0; x < 80; x++)
+        {
+            printf("%c", *base);
+            base += 2;
+        }
+        printf("\n");
+    }
 
     exit(EXIT_FAILURE);
 }
