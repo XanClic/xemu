@@ -54,6 +54,15 @@ void segfault_handler(int num, struct sigcontext ctx)
                 may_return = 2;
                 break;
             }
+            else if ((((ctx.edx & 0xFFFF) >= 0x3F8) && ((ctx.edx & 0xFFFF) <= 0x3FF)) ||
+                     (((ctx.edx & 0xFFFF) >= 0x2F8) && ((ctx.edx & 0xFFFF) <= 0x2FF)) ||
+                     (((ctx.edx & 0xFFFF) >= 0x3E8) && ((ctx.edx & 0xFFFF) <= 0x3EF)) ||
+                     (((ctx.edx & 0xFFFF) >= 0x2E8) && ((ctx.edx & 0xFFFF) <= 0x2EF)))
+            {
+                //COM - wird ignoriert
+                may_return = 2;
+                break;
+            }
             break;
     }
 
