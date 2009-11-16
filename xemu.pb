@@ -9,6 +9,17 @@ Procedure _segfault_handler(signum.l, *ctx.sigcontext)
     PrintN("CR2: 0x" + RSet(Hex(*ctx\cr2), 8, "0"))
     PrintN("Instructions: 0x" + RSet(Hex(PeekB(*instr) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 1) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 2) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 3) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 4) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 5) & $FF), 2, "0"))
 
+    PrintN("Disassembling...")
+    If Not CreateFile(0, "failed_code.bin")
+        PrintN("Failed: Could not write binary data.")
+    Else
+        WriteData(0, *instr, 10)
+        CloseFile(0)
+        ndis = RunProgram("ndisasm", "-u failed_code.bin", GetCurrentDirectory(), #PB_Program_Open | #PB_Program_Read)
+        RunProgram("head", "-n 1", "", #PB_Program_Open | #PB_Program_Connect | #PB_Program_Wait, ndis)
+        DeleteFile("failed_code.bin")
+    EndIf
+
     PrintN("Dump of 0xB8000:")
     *off = $B8000
     For y = 0 To 24
@@ -101,7 +112,6 @@ PrintN("Setting up us this program...")
 
 PrintN("(we have no chance to survive, making our segfault handler)")
 
-;OnErrorCall(@segfault_handler())
 signal_(#SIGSEGV, @segfault_handler())
 stk.stack_t\ss_sp = mmap_($7F000000, #SIGSTKSZ, #PROT_READ | #PROT_WRITE, #MAP_PRIVATE | #MAP_FIXED | #MAP_ANONYMOUS, -1, 0)
 stk\ss_size = #SIGSTKSZ

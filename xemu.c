@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <signal.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -117,6 +116,7 @@ int main(int argc, char *argv[])
 void segfault_handler(int num, struct sigcontext ctx)
 {
     uint8_t *instr;
+    FILE *ffp;
 
     instr = (uint8_t *)ctx.eip;
 
@@ -124,6 +124,18 @@ void segfault_handler(int num, struct sigcontext ctx)
     printf("EIP: 0x%08X\n", (unsigned int)ctx.eip);
     printf("CR2: 0x%08X\n", (unsigned int)ctx.cr2);
     printf("Instructions: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", instr[0], instr[1], instr[2], instr[3], instr[4], instr[5]);
+
+    printf("Disassembling...\n");
+    ffp = fopen("failed_code.bin", "w");
+    if (ffp == NULL)
+        printf("Failed: Could not write binary data.\n");
+    else
+    {
+        fwrite(instr, 1, 10, ffp);
+        fclose(ffp);
+        system("ndisasm -u failed_code.bin | head -n 1");
+        remove("failed_code.bin");
+    }
 
     printf("Dump of 0xB8000:\n");
     char *base = (char *)0xB8000;
