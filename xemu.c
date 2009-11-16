@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <signal.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -117,10 +118,11 @@ void segfault_handler(int num, struct sigcontext ctx)
 {
     uint8_t *instr;
 
+    instr = (uint8_t *)ctx.eip;
+
     printf("Unhandled segfault. All our base are belong to the OS.\n");
     printf("EIP: 0x%08X\n", (unsigned int)ctx.eip);
     printf("CR2: 0x%08X\n", (unsigned int)ctx.cr2);
-    instr = (uint8_t *)ctx.eip;
     printf("Instructions: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", instr[0], instr[1], instr[2], instr[3], instr[4], instr[5]);
 
     printf("Dump of 0xB8000:\n");
@@ -129,10 +131,10 @@ void segfault_handler(int num, struct sigcontext ctx)
     {
         for (int x = 0; x < 80; x++)
         {
-            printf("%c", *base);
+            putchar(*base);
             base += 2;
         }
-        printf("\n");
+        putchar('\n');
     }
 
     exit(EXIT_FAILURE);

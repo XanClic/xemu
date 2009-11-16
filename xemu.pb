@@ -1,0 +1,118 @@
+IncludeFile "elf.pb"
+IncludeFile "api.pb"
+
+
+Procedure _segfault_handler(signum.l, *ctx.sigcontext)
+    *instr = *ctx\eip
+    PrintN("Unhandled segfault. All our base are belong to the OS.")
+    PrintN("EIP: 0x" + RSet(Hex(*ctx\eip), 8, "0"))
+    PrintN("CR2: 0x" + RSet(Hex(*ctx\cr2), 8, "0"))
+    PrintN("Instructions: 0x" + RSet(Hex(PeekB(*instr) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 1) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 2) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 3) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 4) & $FF), 2, "0") + " 0x" + RSet(Hex(PeekB(*instr + 5) & $FF), 2, "0"))
+
+    PrintN("Dump of 0xB8000:")
+    *off = $B8000
+    For y = 0 To 24
+        For x = 0 To 79
+            Print(Chr(PeekB(*off) & $FF))
+            *off + 2
+        Next
+        PrintN("")
+    Next
+
+    End 1
+EndProcedure
+
+Global *addr
+
+Procedure segfault_handler(signum.l)
+    !lea eax,[p.v_signum]
+    !add eax,4
+    !mov [p_addr],eax
+    _segfault_handler(signum, *addr)
+    !ret
+EndProcedure
+
+
+OpenConsole()
+
+If CountProgramParameters() <> 1
+    PrintN("Usage: xemu <kernel>")
+    End 1
+EndIf
+
+If Not ReadFile(0, ProgramParameter(0))
+    PrintN(ProgramParameter(0) + ": No such file or directory.")
+    End 1
+EndIf
+
+*krnl = mmap_($78000000, Lof(0), #PROT_READ, #MAP_PRIVATE | #MAP_FIXED, fileno_(FileID(0)), 0)
+If *krnl = #MAP_FAILED
+    PrintN("Could not load that kernel.")
+    End 1
+EndIf
+
+CloseFile(0)
+
+PrintN("Kernel mapped to 0x" + RSet(Hex(*krnl), 8, "0") + ", interpreting...")
+
+*elf_hdr.Elf32_Ehdr = *krnl;
+
+If (*elf_hdr\e_ident[0] <> $7F) Or (*elf_hdr\e_ident[1] <> 'E') Or (*elf_hdr\e_ident[2] <> 'L') Or (*elf_hdr\e_ident[3] <> 'F')
+    PrintN("That's no ELF.")
+    End 1
+EndIf
+
+If (*elf_hdr\e_ident[#EI_CLASS] <> #ELFCLASS32) Or (*elf_hdr\e_ident[#EI_DATA] <> #ELFDATA2LSB) Or (*elf_hdr\e_machine <> #EM_386) Or (*elf_hdr\e_type <> #ET_EXEC)
+    PrintN("i386 LSB executable required.")
+    End 1
+EndIf
+
+PrintN("Valid format, loading...")
+
+;128 MB mappen (außer die ersten 64 kB, die erlaubt Linux uns nicht)
+If mmap_($00010000, $07FF0000, #PROT_READ | #PROT_WRITE | #PROT_EXEC, #MAP_PRIVATE | #MAP_FIXED | #MAP_ANONYMOUS, -1, 0) = #MAP_FAILED
+    PrintN("Could not allocate 128 MB.")
+    End 1
+EndIf
+
+For i = 0 To *elf_hdr\e_phnum - 1
+    *prg_hdr.Elf32_Phdr = *krnl + *elf_hdr\e_phoff + i * SizeOf(Elf32_Phdr)
+    ;Laden sollte man das schon können.
+    If *prg_hdr\p_type <> #PT_LOAD
+        Continue
+    EndIf
+    PrintN("Loading " + Str(*prg_hdr\p_memsz) + " bytes (memsize) to 0x" + RSet(Hex(*prg_hdr\p_vaddr), 8, "0"))
+    *base = *prg_hdr\p_vaddr & $FFFFF000
+    size = *prg_hdr\p_memsz + *prg_hdr\p_vaddr & $00000FFF
+    PrintN(" -> padded to " + Str(size) + "@0x" + RSet(Hex(*base), 8, "0"))
+    !mov [v_get_from_asm],memset
+    CallCFunctionFast(get_from_asm, *prg_hdr\p_vaddr, 0, *prg_hdr\p_memsz)
+    If Not *prg_hdr\p_filesz
+        Continue
+    EndIf
+    CopyMemory(*krnl + *prg_hdr\p_offset, *prg_hdr\p_vaddr, *prg_hdr\p_filesz)
+Next
+
+PrintN("Load done.")
+
+PrintN("In AD 2009 fun was beginning.")
+
+PrintN("Setting up us this program...")
+
+PrintN("(we have no chance to survive, making our segfault handler)")
+
+;OnErrorCall(@segfault_handler())
+signal_(#SIGSEGV, @segfault_handler())
+stk.stack_t\ss_sp = mmap_($7F000000, #SIGSTKSZ, #PROT_READ | #PROT_WRITE, #MAP_PRIVATE | #MAP_FIXED | #MAP_ANONYMOUS, -1, 0)
+stk\ss_size = #SIGSTKSZ
+stk\ss_flags = 0
+sigaltstack_(@stk, 0)
+
+PrintN("")
+
+;Ja. Ein Inline-ASM-Jump wäre schöner, aber da müssten wir irgendwie die Structure rüberbekommen
+;und so ist es einfacher.
+CallCFunctionFast(*elf_hdr\e_entry)
+
+;Wer weiß, warum wir hier landen...
+End
