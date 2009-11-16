@@ -52,7 +52,7 @@ Procedure _segfault_handler(signum.l, *ctx.sigcontext)
 
     PrintN("Disassembling...")
     If Not CreateFile(0, "failed_code.bin")
-        PrintN("Failed: Could not write binary data.")
+        PrintN("Failed: Cannot write binary data.")
     Else
         WriteData(0, *instr, 10)
         CloseFile(0)
@@ -114,7 +114,7 @@ EndIf
 
 *krnl = mmap_($78000000, Lof(0), #PROT_READ, #MAP_PRIVATE | #MAP_FIXED, fileno_(FileID(0)), 0)
 If *krnl = #MAP_FAILED
-    PrintN("Could not load that kernel.")
+    PrintN("Cannot load that kernel.")
     End 1
 EndIf
 
@@ -138,7 +138,7 @@ PrintN("Valid format, loading...")
 
 ;128 MB mappen (außer die ersten 64 kB, die erlaubt Linux uns nicht)
 If mmap_($00010000, $07FF0000, #PROT_READ | #PROT_WRITE | #PROT_EXEC, #MAP_PRIVATE | #MAP_FIXED | #MAP_ANONYMOUS, -1, 0) = #MAP_FAILED
-    PrintN("Could not allocate 128 MB.")
+    PrintN("Cannot allocate 128 MB.")
     End 1
 EndIf
 
