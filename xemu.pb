@@ -2,8 +2,49 @@ IncludeFile "elf.pb"
 IncludeFile "api.pb"
 
 
+#REAL_SEGFAULT = 0
+#CLI_SEGFAULT = 1
+
+Global expected_segfault = #REAL_SEGFAULT, Dim old_values(19), old_len = 0
+
 Procedure _segfault_handler(signum.l, *ctx.sigcontext)
+    may_return = 0
+
+    If expected_segfault = #CLI_SEGFAULT
+        *instr = *ctx\eip - (old_len - 1)
+        For i = 0 To old_len - 1
+            PokeB(*instr + i, old_values(i) & $FF)
+        Next
+        expected_segfault = #REAL_SEGFAULT
+        ProcedureReturn 0
+    EndIf
+
     *instr = *ctx\eip
+
+    Select PeekB(*instr) & $FF
+        Case $EE
+            PrintN("out: 0x" + RSet(Hex(*ctx\eax & $FF), 2, "0") + " -> 0x" + RSet(Hex(*ctx\edx & $FFFF), 4, "0"))
+            ;out dx,al
+            If (*ctx\edx & $FFFF >= $3D0 And *ctx\edx & $FFFF <= $3DC)
+                ;CGA - wird ignoriert
+                may_return = 2
+            EndIf
+    EndSelect
+
+    If may_return
+        For i = 0 To may_return - 1
+            old_values(i) = PeekB(*instr + i) & $FF
+        Next
+        old_len = may_return
+        expected_segfault = #CLI_SEGFAULT
+        may_return - 1
+        For i = 0 To may_return - 1
+            PokeB(*instr + i, $90 & $FF) ;NOP
+        Next
+        PokeB(*instr + may_return, $FA & $FF) ;CLI
+        ProcedureReturn 0
+    EndIf
+
     PrintN("Unhandled segfault. All our base are belong to the OS.")
     PrintN("EIP: 0x" + RSet(Hex(*ctx\eip), 8, "0"))
     PrintN("CR2: 0x" + RSet(Hex(*ctx\cr2), 8, "0"))
@@ -22,13 +63,28 @@ Procedure _segfault_handler(signum.l, *ctx.sigcontext)
 
     PrintN("Dump of 0xB8000:")
     *off = $B8000
+    Print("+")
+    For x = 1 To 80
+        Print("-")
+    Next
+    PrintN("+")
     For y = 0 To 24
+        Print("|")
         For x = 0 To 79
-            Print(Chr(PeekB(*off) & $FF))
+            If PeekB(*off) & $FF < $20
+                Print(" ")
+            Else
+                Print(Chr(PeekB(*off) & $FF))
+            EndIf
             *off + 2
         Next
-        PrintN("")
+        PrintN("|")
     Next
+    Print("+")
+    For x = 1 To 80
+        Print("-")
+    Next
+    PrintN("+")
 
     End 1
 EndProcedure

@@ -117,8 +117,51 @@ void segfault_handler(int num, struct sigcontext ctx)
 {
     uint8_t *instr;
     FILE *ffp;
+    static enum
+    {
+        REAL_SEGFAULT = 0,
+        CLI_SEGFAULT = 1
+    } expected_segfault = REAL_SEGFAULT;
+    static int old_values[20], old_len = 0;
+    int may_return = 0;
+
+    if (expected_segfault == CLI_SEGFAULT)
+    {
+        instr = (uint8_t *)(ctx.eip - (old_len - 1));
+        for (int i = 0; i < old_len; i++)
+            instr[i] = old_values[i];
+        expected_segfault = REAL_SEGFAULT;
+        return;
+    }
 
     instr = (uint8_t *)ctx.eip;
+
+    switch (instr[0])
+    {
+        case 0xEE:
+            printf("out: 0x%02X -> 0x%04X\n", (unsigned int)(ctx.eax & 0xFF), (unsigned int)(ctx.edx & 0xFFFF));
+            //out dx,al
+            if (((ctx.edx & 0xFFFF) >= 0x3D0) && ((ctx.edx & 0xFFFF) <= 0x3DC))
+            {
+                //CGA - wird ignoriert
+                may_return = 2;
+                break;
+            }
+            break;
+    }
+
+    if (may_return)
+    {
+        for (int i = 0; i < may_return; i++)
+            old_values[i] = instr[i];
+        old_len = may_return;
+        expected_segfault = CLI_SEGFAULT;
+        may_return--;
+        for (int i = 0; i < may_return; i++)
+            instr[i] = 0x90; //NOP
+        instr[may_return] = 0xFA; //CLI
+        return;
+    }
 
     printf("Unhandled segfault. All our base are belong to the OS.\n");
     printf("EIP: 0x%08X\n", (unsigned int)ctx.eip);
@@ -139,15 +182,30 @@ void segfault_handler(int num, struct sigcontext ctx)
 
     printf("Dump of 0xB8000:\n");
     char *base = (char *)0xB8000;
+    putchar('+');
+    for (int x = 1; x < 81; x++)
+        putchar('-');
+    putchar('+');
+    putchar('\n');
     for (int y = 0; y < 25; y++)
     {
+        putchar('|');
         for (int x = 0; x < 80; x++)
         {
-            putchar(*base);
+            if (*base < 0x20)
+                putchar(' ');
+            else
+                putchar(*base);
             base += 2;
         }
+        putchar('|');
         putchar('\n');
     }
+    putchar('+');
+    for (int x = 1; x < 81; x++)
+        putchar('-');
+    putchar('+');
+    putchar('\n');
 
     exit(EXIT_FAILURE);
 }
