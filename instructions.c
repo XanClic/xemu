@@ -415,7 +415,7 @@ int mov_sreg_reg(uint8_t *instr_base, struct sigcontext *ctx)
 
 int sti(uint8_t *instr_base, struct sigcontext *ctx)
 {
-    dprintf("sti");
+    dprintf("sti\n");
 
     //IOPL überprüfen
     if ((cs & 0x07) > ((eflags & 0x3000) >> 12))
