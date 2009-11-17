@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     fseek(kernel, 0, SEEK_END);
     lof = ftell(kernel);
 
-    krnl = mmap((void *)0x48000000, lof, PROT_READ, MAP_PRIVATE | MAP_FIXED, fileno(kernel), 0);
+    krnl = mmap((void *)0x78000000, lof, PROT_READ, MAP_PRIVATE | MAP_FIXED, fileno(kernel), 0);
     if (krnl == MAP_FAILED)
     {
         printf("Cannot load that kernel: %s\n", strerror(errno));
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     fclose(kernel);
 
     //128 MB mappen (außer die ersten 64 kB, die erlaubt Linux uns nicht)
-    rp = mmap((void *)0x00010000, 0x00FF0000, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+    rp = mmap((void *)0x00010000, 0x07FF0000, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
     if ((rp == MAP_FAILED) || (rp != (void *)0x00010000))
     {
         printf("Cannot allocate 128 MB.\n");

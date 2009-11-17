@@ -1,7 +1,7 @@
 CC = @gcc
 CFLAGS = -Iinclude -std=gnu99 -Wall -pedantic -g2 -m32
 LINK = @gcc
-LFLAGS = -Xlinker -Ttext -Xlinker 0x40000000 -m32 `sdl-config --cflags --libs`
+LFLAGS = -Xlinker -Ttext -Xlinker 0x70000000 -m32 `sdl-config --cflags --libs`
 ASM = @fasm > /dev/null
 PBC = /usr/bin/pbcompiler
 DEL = -@rm &> /dev/null
