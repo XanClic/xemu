@@ -16,7 +16,7 @@ void init_sdl(void)
 {
     SDL_Surface *logo;
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER ) == -1)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1)
     {
         printf("Cannot init SDL: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);

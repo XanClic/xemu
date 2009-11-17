@@ -2,15 +2,18 @@ Global Dim font(15), upscreentimer, *screen.SDL_Surface
 
 Declare update_screen()
 
-Procedure init_gfx()
-    If Not InitSprite()
-        PrintN("Cannot init GFX.")
+Procedure init_sdl()
+    If SDL_Init_(#SDL_INIT_VIDEO | #SDL_INIT_TIMER) = -1
+        PrintN("Cannot init SDL: " + PeekS(SDL_GetError_()))
         End 1
     EndIf
 
-    SDL_Init_(#SDL_INIT_TIMER)
-
     *screen = SDL_SetVideoMode_(720, 400, 16, #SDL_HWSURFACE)
+    If Not *screen
+        PrintN("Cannot set video mode: " + PeekS(SDL_GetError_()))
+        End 1
+    Endif
+
     SDL_WM_SetCaption_("xemu", 0)
 
     RunProgram("tar", "-xjf pics.tar.bz2", GetCurrentDirectory() + "/imgs", #PB_Program_Wait)
@@ -45,7 +48,7 @@ Procedure init_gfx()
     upscreentimer = SDL_AddTimer_(10, @update_screen(), 0)
 EndProcedure
 
-Procedure deinit_gfx()
+Procedure deinit_sdl()
     SDL_RemoveTimer_(upscreentimer)
 
     SDL_WM_SetCaption_("xemu - Finished", 0)

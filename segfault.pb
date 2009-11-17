@@ -3,7 +3,7 @@
 
 Global expected_segfault = #REAL_SEGFAULT, Dim old_values(19), old_len = 0
 Declare segfault_handler(signum.l)
-Declare deinit_gfx()
+Declare deinit_sdl()
 
 Procedure init_segfault_handler()
     signal_(#SIGSEGV, @segfault_handler())
@@ -67,7 +67,7 @@ Procedure _segfault_handler(signum.l, *ctx.sigcontext)
         DeleteFile("failed_code.bin")
     EndIf
 
-    deinit_gfx()
+    deinit_sdl()
 EndProcedure
 
 Global *addr

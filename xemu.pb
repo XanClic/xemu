@@ -3,7 +3,7 @@ IncludeFile "include/api.pb"
 
 IncludeFile "segfault.pb"
 IncludeFile "elf.pb"
-IncludeFile "gfx.pb"
+IncludeFile "sdl.pb"
 
 
 OpenConsole()
@@ -37,7 +37,7 @@ init_segfault_handler()
 
 PrintN("")
 
-init_gfx()
+init_sdl()
 
 ;Ja. Ein Inline-ASM-Jump wäre schöner, aber da müssten wir irgendwie die Structure rüberbekommen
 ;und so ist es einfacher.
