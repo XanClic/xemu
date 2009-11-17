@@ -32,6 +32,8 @@ void init_sdl(void)
         exit(EXIT_FAILURE);
     }
 
+    system("cd imgs && tar -xjf pics.tar.bz2");
+
     SDL_WM_SetCaption("xemu", NULL);
 
     SDL_Rect rcDest = {0, 0, 720, 400};
@@ -59,6 +61,8 @@ void init_sdl(void)
         sprintf(name, "imgs/font%i.bmp", i);
         font[i] = SDL_LoadBMP(name);
     }
+
+    system("rm imgs/*.bmp");
 
     upscreentimer = SDL_AddTimer(10, &update_screen, NULL);
 }
