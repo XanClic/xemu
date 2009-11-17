@@ -43,19 +43,18 @@ pb: $(wildcard *.pb)
 	@echo 1 >> make_cmd_script
 	@chmod a+x make_cmd_script
 
-	@echo "Creating scripts for rm, gcc and strip..."
+	@echo "Creating scripts for rm, gcc, strip and so on..."
 	@./make_cmd_script rm
 	@./make_cmd_script gcc -Xlinker -Ttext -Xlinker 0x70000000
 	@./make_cmd_script strip
+	@./make_cmd_script sdl-config
+	@./make_cmd_script pkg-config
 
 	@echo "Running pbcopiler..."
 	@export OLD_PATH="$$PATH" && export PATH=$(shell pwd) && $(PBC) -e xemupb xemu.pb
 
 	@echo "Cleaning up..."
-	$(DEL) rm
-	$(DEL) gcc
-	$(DEL) strip
-	$(DEL) make_cmd_script
+	$(DEL) rm gcc strip sdl-config pkg-config make_cmd_script
 
 clean:
 	$(DEL) *.o xemu xemupb
