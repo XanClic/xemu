@@ -1,5 +1,5 @@
-IncludeFile "elf.pb"
-IncludeFile "api.pb"
+IncludeFile "include/elf.pb"
+IncludeFile "include/api.pb"
 
 
 #REAL_SEGFAULT = 0

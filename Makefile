@@ -1,15 +1,15 @@
 CC = @gcc
-CFLAGS = -I. -std=gnu99 -Wall -pedantic -g2
+CFLAGS = -Iinclude -std=gnu99 -Wall -pedantic -g2
 LINK = @gcc
-LFLAGS = -Xlinker -Ttext -Xlinker 0x70000000 `sdl-config --cflags --libs`
-ASM = @fasm
+LFLAGS = -Xlinker -Ttext -Xlinker 0x70000000 /usr/lib/libSDL_image-1.2.so.0 `sdl-config --cflags --libs`
+ASM = @fasm > /dev/null
 PBC = /usr/bin/pbcompiler
-DEL = -@rm
+DEL = -@rm &> /dev/null
 
 .PHONY: all clean pb
 
 all: $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.asm,%.o,$(wildcard *.asm))
-	@echo "Linking everything..."
+	@echo "LING   -> xemu"
 	$(LINK) $(LFLAGS) *.o -o xemu
 
 %.o: %.c

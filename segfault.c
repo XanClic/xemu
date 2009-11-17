@@ -2,11 +2,17 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
+
+#include "instructions.h"
 
 
 void segfault_handler(int, struct sigcontext);
 extern void deinit_sdl(void);
+
+
+static int (*handle_opcode[256])(uint8_t *instr_base, struct sigcontext *ctx) = { NULL };
 
 
 void init_segfault_handler(void)
@@ -18,6 +24,14 @@ void init_segfault_handler(void)
     stk.ss_size = SIGSTKSZ;
     stk.ss_flags = 0;
     sigaltstack(&stk, NULL);
+
+    init_instructions();
+
+    handle_opcode[0x0F] = &two_byte_instr;
+    handle_opcode[0x8E] = &mov_sreg_reg;
+    handle_opcode[0xEA] = &far_jmp;
+    handle_opcode[0xEE] = &out_dx_al;
+    handle_opcode[0xFB] = &sti;
 }
 
 void segfault_handler(int num, struct sigcontext ctx)
@@ -43,39 +57,23 @@ void segfault_handler(int num, struct sigcontext ctx)
 
     instr = (uint8_t *)ctx.eip;
 
-    switch (instr[0])
-    {
-        case 0xEE:
-            printf("out: 0x%02X -> 0x%04X\n", (unsigned int)(ctx.eax & 0xFF), (unsigned int)(ctx.edx & 0xFFFF));
-            //out dx,al
-            if (((ctx.edx & 0xFFFF) >= 0x3D0) && ((ctx.edx & 0xFFFF) <= 0x3DC))
-            {
-                //CGA - wird ignoriert
-                may_return = 2;
-                break;
-            }
-            else if ((((ctx.edx & 0xFFFF) >= 0x3F8) && ((ctx.edx & 0xFFFF) <= 0x3FF)) ||
-                     (((ctx.edx & 0xFFFF) >= 0x2F8) && ((ctx.edx & 0xFFFF) <= 0x2FF)) ||
-                     (((ctx.edx & 0xFFFF) >= 0x3E8) && ((ctx.edx & 0xFFFF) <= 0x3EF)) ||
-                     (((ctx.edx & 0xFFFF) >= 0x2E8) && ((ctx.edx & 0xFFFF) <= 0x2EF)))
-            {
-                //COM - wird ignoriert
-                may_return = 2;
-                break;
-            }
-            break;
-    }
+    if (handle_opcode[instr[0]] != NULL)
+        may_return = handle_opcode[instr[0]](instr, &ctx);
 
     if (may_return)
     {
-        for (int i = 0; i < may_return; i++)
-            old_values[i] = instr[i];
-        old_len = may_return;
-        expected_segfault = CLI_SEGFAULT;
-        may_return--;
-        for (int i = 0; i < may_return; i++)
-            instr[i] = 0x90; //NOP
-        instr[may_return] = 0xFA; //CLI
+        if (may_return > 0)
+        {
+            may_return++;
+            for (int i = 0; i < may_return; i++)
+                old_values[i] = instr[i];
+            old_len = may_return;
+            expected_segfault = CLI_SEGFAULT;
+            may_return--;
+            for (int i = 0; i < may_return; i++)
+                instr[i] = 0x90; //NOP
+            instr[may_return] = 0xFA; //CLI
+        }
         return;
     }
 

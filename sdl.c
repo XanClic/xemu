@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
 
 
 Uint32 update_screen(Uint32 intvl, void *param);
@@ -36,7 +37,7 @@ void init_sdl(void)
     SDL_Rect rcDest = {0, 0, 720, 400};
     SDL_FillRect(screen, &rcDest, SDL_MapRGB(screen->format, 100, 100, 100));
 
-    logo = SDL_LoadBMP("imgs/logo.bmp");
+    logo = IMG_Load("imgs/logo.png");
     rcDest.x = 210;
     rcDest.y = 50;
     SDL_BlitSurface(logo, NULL, screen, &rcDest);
@@ -55,8 +56,8 @@ void init_sdl(void)
     for (int i = 0; i < 16; i++)
     {
         char name[20];
-        sprintf(name, "imgs/font%i.bmp", i);
-        font[i] = SDL_LoadBMP(name);
+        sprintf(name, "imgs/font%i.png", i);
+        font[i] = IMG_Load(name);
     }
 
     upscreentimer = SDL_AddTimer(10, &update_screen, NULL);
@@ -91,6 +92,8 @@ void deinit_sdl(void)
     SDL_Event event;
 
     SDL_RemoveTimer(upscreentimer);
+
+    SDL_WM_SetCaption("xemu - Finished", NULL);
 
     for (;;)
     {
