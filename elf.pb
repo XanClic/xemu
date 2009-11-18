@@ -29,16 +29,15 @@ Procedure load_elf(*krnl)
         If *prg_hdr\p_type <> #PT_LOAD
             Continue
         EndIf
-        PrintN("Loading " + Str(*prg_hdr\p_memsz) + " bytes (memsize) to 0x" + RSet(Hex(*prg_hdr\p_vaddr), 8, "0"))
-        *base = *prg_hdr\p_vaddr & $FFFFF000
-        size = *prg_hdr\p_memsz + *prg_hdr\p_vaddr & $00000FFF
+        PrintN("Loading " + Str(*prg_hdr\p_memsz) + " bytes (memsize) to 0x" + RSet(Hex(*prg_hdr\p_paddr), 8, "0"))
+        *base = *prg_hdr\p_paddr & $FFFFF000
+        size = *prg_hdr\p_memsz + *prg_hdr\p_paddr & $00000FFF
         PrintN(" -> padded to " + Str(size) + "@0x" + RSet(Hex(*base), 8, "0"))
-        !mov [v_get_from_asm],memset
-        CallCFunctionFast(get_from_asm, *prg_hdr\p_vaddr, 0, *prg_hdr\p_memsz)
+        FillMemory(*prg_hdr\p_paddr, *prg_hdr\p_memsz)
         If Not *prg_hdr\p_filesz
             Continue
         EndIf
-        CopyMemory(*krnl + *prg_hdr\p_offset, *prg_hdr\p_vaddr, *prg_hdr\p_filesz)
+        CopyMemory(*krnl + *prg_hdr\p_offset, *prg_hdr\p_paddr, *prg_hdr\p_filesz)
     Next
 
     ProcedureReturn *elf_hdr\e_entry

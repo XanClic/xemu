@@ -8,9 +8,9 @@ DEL = -@rm &> /dev/null
 
 .PHONY: all clean pb
 
-all: $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.asm,%.o,$(wildcard *.asm))
+all: $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.c,%.o,$(wildcard devices/*.c)) $(patsubst %.asm,%.o,$(wildcard *.asm))
 	@echo "LING   -> xemu"
-	$(LINK) $(LFLAGS) *.o -o xemu
+	$(LINK) $(LFLAGS) *.o devices/*.o -o xemu
 
 %.o: %.c
 	@echo "CC     $<"
@@ -57,4 +57,4 @@ pb: $(wildcard *.pb)
 	$(DEL) rm gcc strip sdl-config pkg-config make_cmd_script
 
 clean:
-	$(DEL) *.o xemu xemupb
+	$(DEL) *.o devices/*.o xemu xemupb

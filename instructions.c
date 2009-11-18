@@ -9,6 +9,7 @@
 #include "instructions.h"
 #include "gdt.h"
 #include "idt.h"
+#include "pic.h"
 
 
 #define dprintf(...) { printf("[0x%08X] ", (unsigned int)ctx->eip); printf(__VA_ARGS__); }
@@ -17,7 +18,7 @@
 static int (*handle_tb_opcode[256])(uint8_t *instr_base, struct sigcontext *ctx) = { NULL };
 extern union gdt *gdt;
 extern struct idt *idt;
-extern uint_fast16_t cs, ds, es, fs, gs, ss;
+extern uint_fast16_t cs, ds, es, fs, gs, ss, tr;
 extern uint32_t eflags;
 
 static const char *name_sreg[8] =
@@ -65,19 +66,27 @@ void init_instructions(void)
 
 int out_dx_al(uint8_t *instr_base, struct sigcontext *ctx)
 {
-    dprintf("out: 0x%02X -> 0x%04X\n", (unsigned int)(ctx->eax & 0xFF), (unsigned int)(ctx->edx & 0xFFFF));
-    if (((ctx->edx & 0xFFFF) >= 0x3D0) && ((ctx->edx & 0xFFFF) <= 0x3DC))
+    uint16_t port = ctx->edx & 0xFFFF;
+    uint8_t val = ctx->eax & 0xFF;
+
+    dprintf("out: 0x%02X -> 0x%04X\n", val, port);
+    if ((port >= 0x3D0) && (port <= 0x3DC))
     {
         //CGA - wird ignoriert
         return 1;
     }
-    else if ((((ctx->edx & 0xFFFF) >= 0x3F8) && ((ctx->edx & 0xFFFF) <= 0x3FF)) ||
-             (((ctx->edx & 0xFFFF) >= 0x2F8) && ((ctx->edx & 0xFFFF) <= 0x2FF)) ||
-             (((ctx->edx & 0xFFFF) >= 0x3E8) && ((ctx->edx & 0xFFFF) <= 0x3EF)) ||
-             (((ctx->edx & 0xFFFF) >= 0x2E8) && ((ctx->edx & 0xFFFF) <= 0x2EF)))
+    else if (((port >= 0x3F8) && (port <= 0x3FF)) ||
+             ((port >= 0x2F8) && (port <= 0x2FF)) ||
+             ((port >= 0x3E8) && (port <= 0x3EF)) ||
+             ((port >= 0x2E8) && (port <= 0x2EF)))
     {
         //COM - wird ignoriert
         return 1;
+    }
+    else if ((port == 0x20) || (port == 0x21) || (port == 0xA0) || (port == 0xA1))
+    {
+        //Programmable Interrupt Controller
+        return pic_outb(port, val);
     }
     dprintf(" -> Unknown port!\n");
     return 0;
@@ -152,6 +161,8 @@ int ltr_lldt(uint8_t *instr_base, struct sigcontext *ctx)
                 exception(EXCEPTION_GPF, ctx);
             }
 
+            tr = new_tr;
+
             return 2;
     }
 
@@ -164,6 +175,7 @@ int lgdt_lidt(uint8_t *instr_base, struct sigcontext *ctx)
 {
     struct gdt_desc *gdt_desc = NULL;
     struct idt_desc *idt_desc = NULL;
+    int off;
 
     switch (instr_base[2] & 0xF8)
     {
@@ -252,6 +264,58 @@ int lgdt_lidt(uint8_t *instr_base, struct sigcontext *ctx)
             dprintf(" -> %i entries @0x%08X\n", (idt_desc->limit + 1) >> 3, idt_desc->base);
 
             return 2;
+
+        case 0x50:
+            off = (int8_t)instr_base[3];
+            if (off < 0)
+            {
+                dprintf("lgdt [%s-0x%X]\n", name_reg32[instr_base[2] & 0x07], -off);
+            }
+            else
+            {
+                dprintf("lgdt [%s+0x%X]\n", name_reg32[instr_base[2] & 0x07], off);
+            }
+
+            switch (instr_base[2] & 0x07)
+            {
+                case 0:
+                    gdt_desc = (struct gdt_desc *)(ctx->eax + off);
+                    break;
+                case 1:
+                    gdt_desc = (struct gdt_desc *)(ctx->ecx + off);
+                    break;
+                case 2:
+                    gdt_desc = (struct gdt_desc *)(ctx->edx + off);
+                    break;
+                case 3:
+                    gdt_desc = (struct gdt_desc *)(ctx->ebx + off);
+                    break;
+                case 4:
+                    gdt_desc = (struct gdt_desc *)(ctx->esp + off);
+                    break;
+                case 5:
+                    gdt_desc = (struct gdt_desc *)(ctx->ebp + off);
+                    break;
+                case 6:
+                    gdt_desc = (struct gdt_desc *)(ctx->esi + off);
+                    break;
+                case 7:
+                    gdt_desc = (struct gdt_desc *)(ctx->edi + off);
+                    break;
+            }
+
+            if (gdt_desc == NULL)
+                return 0;
+
+            if (gdt != NULL)
+                free(gdt);
+
+            gdt = malloc(gdt_desc->limit + 1);
+            memcpy(gdt, (void *)gdt_desc->base, gdt_desc->limit + 1);
+
+            dprintf(" -> %i entries @0x%08X\n", (gdt_desc->limit + 1) >> 3, gdt_desc->base);
+
+            return 3;
 
         default:
             dprintf("Unknown command.\n");

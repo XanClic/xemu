@@ -3,7 +3,8 @@
 
 Global expected_segfault = #REAL_SEGFAULT, Dim old_values(19), old_len = 0
 Declare segfault_handler(signum.l)
-Declare deinit_sdl()
+
+Global handle_opcode.arr256
 
 Procedure init_segfault_handler()
     signal_(#SIGSEGV, @segfault_handler())
@@ -11,6 +12,16 @@ Procedure init_segfault_handler()
     stk\ss_size = #SIGSTKSZ
     stk\ss_flags = 0
     sigaltstack_(@stk, 0)
+
+    FillMemory(@handle_opcode, 1024)
+
+    init_instructions()
+
+    handle_opcode\m[$0F] = @two_byte_instr()
+    handle_opcode\m[$8E] = @mov_sreg_reg()
+    handle_opcode\m[$EA] = @far_jmp()
+    handle_opcode\m[$EE] = @out_dx_al()
+    handle_opcode\m[$FB] = @sti()
 EndProcedure
 
 Procedure _segfault_handler(signum.l, *ctx.sigcontext)
@@ -27,28 +38,23 @@ Procedure _segfault_handler(signum.l, *ctx.sigcontext)
 
     *instr = *ctx\eip
 
-    Select PeekB(*instr) & $FF
-        Case $EE
-            PrintN("out: 0x" + RSet(Hex(*ctx\eax & $FF), 2, "0") + " -> 0x" + RSet(Hex(*ctx\edx & $FFFF), 4, "0"))
-            ;out dx,al
-            If (*ctx\edx & $FFFF >= $3D0 And *ctx\edx & $FFFF <= $3DC)
-                ;CGA - wird ignoriert
-                may_return = 2
-            EndIf
-    EndSelect
+    If handle_opcode\m[PeekB(*instr) & $FF]
+        may_return = CallCFunctionFast(handle_opcode\m[PeekB(*instr) & $FF], *instr, *ctx)
+    EndIf
 
     If may_return
-        For i = 0 To may_return - 1
-            old_values(i) = PeekB(*instr + i) & $FF
-        Next
-        old_len = may_return
-        expected_segfault = #CLI_SEGFAULT
-        may_return - 1
-        For i = 0 To may_return - 1
-            PokeB(*instr + i, $90 & $FF) ;NOP
-        Next
-        PokeB(*instr + may_return, $FA & $FF) ;CLI
-        ProcedureReturn 0
+        If may_return > 0
+            For i = 0 To may_return
+                old_values(i) = PeekB(*instr + i) & $FF
+            Next
+            old_len = may_return + 1
+            expected_segfault = #CLI_SEGFAULT
+            For i = 0 To may_return - 1
+                PokeB(*instr + i, $90 & $FF) ;NOP
+            Next
+            PokeB(*instr + may_return, $FA & $FF) ;CLI
+            ProcedureReturn 0
+        EndIf
     EndIf
 
     PrintN("Unhandled segfault. All our base are belong to the OS.")
@@ -72,10 +78,9 @@ EndProcedure
 
 Global *addr
 
-Procedure segfault_handler(signum.l)
+ProcedureC segfault_handler(signum.l)
     !lea eax,[p.v_signum]
     !add eax,4
     !mov [p_addr],eax
     _segfault_handler(signum, *addr)
-    !ret
 EndProcedure

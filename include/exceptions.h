@@ -3,7 +3,7 @@
 
 #include <signal.h>
 
-#define EXCEPTION_GPF 14
+#define EXCEPTION_GPF 13
 
 void exception(int num, struct sigcontext *);
 

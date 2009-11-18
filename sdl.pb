@@ -18,7 +18,7 @@ Procedure init_sdl()
 
     RunProgram("tar", "-xjf pics.tar.bz2", GetCurrentDirectory() + "/imgs", #PB_Program_Wait)
 
-    logo = SDL_LoadBMP_RW_(SDL_RWFromFile_("imgs/logo.bmp", "rb"), 1)
+    logo = SDL_LoadBMP_("imgs/logo.bmp")
     rcDest.SDL_Rect\x = 0
     rcDest\y = 0
     rcDest\w = 720
@@ -26,7 +26,7 @@ Procedure init_sdl()
     SDL_FillRect_(*screen, @rcDest, SDL_MapRGB_(*screen\format, 100, 100, 100, 0))
     rcDest\x = 210
     rcDest\y = 50
-    SDL_UpperBlit_(logo, 0, *screen, @rcDest)
+    SDL_BlitSurface_(logo, 0, *screen, @rcDest)
     SDL_FreeSurface_(logo)
     SDL_UpdateRect_(*screen, 0, 0, 0, 0)
 
@@ -40,7 +40,7 @@ Procedure init_sdl()
     SDL_UpdateRect_(*screen, 0, 0, 0, 0)
 
     For i = 0 To 15
-        font(i) = SDL_LoadBMP_RW_(SDL_RWFromFile_("imgs/font" + Str(i) + ".bmp", "rb"), 1)
+        font(i) = SDL_LoadBMP_("imgs/font" + Str(i) + ".bmp")
     Next
 
     RunProgram("bash", "-c " + Chr('"') + "rm imgs/*.bmp" + Chr('"'), GetCurrentDirectory())
@@ -85,7 +85,7 @@ Procedure update_screen()
             rcSrc\x = (PeekB(*buf) % 32) * 9
             rcSrc\y = Int(PeekB(*buf) / 32) * 16
             rcDest\x = x * 9
-            SDL_UpperBlit_(font(PeekB(*buf + 1) & $F), @rcSrc, *screen, @rcDest)
+            SDL_BlitSurface_(font(PeekB(*buf + 1) & $F), @rcSrc, *screen, @rcDest)
             *buf + 2
         Next
     Next

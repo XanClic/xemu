@@ -1,9 +1,19 @@
-IncludeFile "include/elf.pb"
 IncludeFile "include/api.pb"
+IncludeFile "include/elf.pb"
+IncludeFile "include/gdt.pb"
+IncludeFile "include/idt.pb"
+IncludeFile "include/sdl.pb"
 
-IncludeFile "segfault.pb"
+Structure arr256
+    m.l[256]
+EndStructure
+
+IncludeFile "cpu_state.pb"
 IncludeFile "elf.pb"
+IncludeFile "exceptions.pb"
+IncludeFile "instructions.pb"
 IncludeFile "sdl.pb"
+IncludeFile "segfault.pb"
 
 
 OpenConsole()
