@@ -1,5 +1,4 @@
 #include <errno.h>
-#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +12,6 @@
 extern void init_sdl(void);
 extern uintptr_t load_elf(void *krnl);
 extern void init_segfault_handler(void);
-void ubuntu_gau(int);
 
 
 int main(int argc, char *argv[])
@@ -47,8 +45,6 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         fputc('\n', stderr);
-
-        signal(SIGSEGV, &ubuntu_gau);
     }
 
     kernel = fopen(argv[1], "r");
@@ -94,16 +90,4 @@ int main(int argc, char *argv[])
     asm volatile ("jmp *%%ebx" :: "b"(entry));
 
     return EXIT_SUCCESS;
-}
-
-void ubuntu_gau(int sig)
-{
-    fprintf(stderr, "YEAH! I TOLD YOU! UBUNTU IS BROKEN! IT'S SO BROKEN I COULD CRY!\n");
-    fprintf(stderr, "I hate Ubuntu users saying Ubuntu would be cool. You see, it isn't at all.\n");
-    fprintf(stderr, "What to do now? You could use openSUSE. That's a good thing.\n");
-    fprintf(stderr, "Or you build Linux on your own (Linux from scratch), that'll also work.\n");
-    fprintf(stderr, "openSUSE: http://software.opensuse.org/112/en\n");
-    fprintf(stderr, "Linux from scratch: http://www.linuxfromscratch.org/\n\n");
-    fprintf(stderr, "So get rid off Ubuntu right NOW!\n");
-    exit(EXIT_FAILURE);
 }
