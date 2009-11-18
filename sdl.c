@@ -18,7 +18,7 @@ void init_sdl(void)
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1)
     {
-        printf("Cannot init SDL: %s\n", SDL_GetError());
+        fprintf(stderr, "Cannot init SDL: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
@@ -27,7 +27,7 @@ void init_sdl(void)
     screen = SDL_SetVideoMode(720, 400, 16, SDL_HWSURFACE);
     if (screen == NULL)
     {
-        printf("Cannot set video mode: %s\n", SDL_GetError());
+        fprintf(stderr, "Cannot set video mode: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 

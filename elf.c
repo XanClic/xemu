@@ -19,7 +19,7 @@ uintptr_t load_elf(void *krnl)
         (elf_hdr->e_ident[2] !=  'L') ||
         (elf_hdr->e_ident[3] !=  'F'))
     {
-        printf("That's no ELF.\n");
+        fprintf(stderr, "That's no ELF.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -28,7 +28,7 @@ uintptr_t load_elf(void *krnl)
         (elf_hdr->e_machine         != EM_386)      ||
         (elf_hdr->e_type            != ET_EXEC))
     {
-        printf("i386 LSB executable required.\n");
+        fprintf(stderr, "i386 LSB executable required.\n");
         exit(EXIT_FAILURE);
     }
 
