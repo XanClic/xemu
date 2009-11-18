@@ -40,14 +40,14 @@ uintptr_t load_elf(void *krnl)
         //Laden sollte man das schon können.
         if (prg_hdr[i].p_type != PT_LOAD)
             continue;
-        printf("Loading %i bytes (memsize) to 0x%08X\n", (int)prg_hdr[i].p_memsz, (unsigned int)prg_hdr[i].p_vaddr);
-        base = (void *)(prg_hdr[i].p_vaddr & 0xFFFFF000);
-        size = prg_hdr[i].p_memsz + (prg_hdr[i].p_vaddr & 0x00000FFF);
+        printf("Loading %i bytes (memsize) to 0x%08X\n", (int)prg_hdr[i].p_memsz, (unsigned int)prg_hdr[i].p_paddr);
+        base = (void *)(prg_hdr[i].p_paddr & 0xFFFFF000);
+        size = prg_hdr[i].p_memsz + (prg_hdr[i].p_paddr & 0x00000FFF);
         printf(" -> padded to %i@0x%08X\n", size, (unsigned int)base);
-        memset((void *)prg_hdr[i].p_vaddr, 0, prg_hdr[i].p_memsz);
+        memset((void *)prg_hdr[i].p_paddr, 0, prg_hdr[i].p_memsz);
         if (!prg_hdr[i].p_filesz)
             continue;
-        memcpy((void *)prg_hdr[i].p_vaddr, (const void *)((uintptr_t)krnl + prg_hdr[i].p_offset), prg_hdr[i].p_filesz);
+        memcpy((void *)prg_hdr[i].p_paddr, (const void *)((uintptr_t)krnl + prg_hdr[i].p_offset), prg_hdr[i].p_filesz);
     }
 
     return elf_hdr->e_entry;
