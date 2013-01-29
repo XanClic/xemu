@@ -8,7 +8,7 @@
 Uint32 update_screen(Uint32 intvl, void *param);
 
 
-SDL_Surface *screen, *font[16];
+SDL_Surface *screen, *font;
 SDL_TimerID upscreentimer;
 
 
@@ -31,8 +31,6 @@ void init_sdl(void)
         exit(EXIT_FAILURE);
     }
 
-    //system("cd imgs && tar -xjf pics.tar.bz2");
-
     SDL_WM_SetCaption("xemu", NULL);
 
     SDL_Rect rcDest = {0, 0, 720, 400};
@@ -54,16 +52,8 @@ void init_sdl(void)
     SDL_FillRect(screen, &rcDest, SDL_MapRGB(screen->format, 0, 0, 0));
     SDL_UpdateRect(screen, 0, 0, 0, 0);
 
-    for (int i = 0; i < 16; i++)
-    {
-        char name[20];
-        sprintf(name, "imgs/font%i.bmp", i);
-        font[i] = SDL_LoadBMP("imgs/font.bmp");
-
-        SDL_SetColorKey(font[i], SDL_SRCCOLORKEY, 0);
-    }
-
-    //system("rm imgs/*.bmp");
+    font = SDL_LoadBMP("imgs/font.bmp");
+    SDL_SetColorKey(font, SDL_SRCCOLORKEY, 0);
 
     upscreentimer = SDL_AddTimer(10, &update_screen, NULL);
 }
@@ -91,7 +81,7 @@ Uint32 update_screen(Uint32 intvl, void *param)
 {
     SDL_Rect rcDest = {0, 0, 9, 16};
     SDL_Rect rcSrc = {0, 0, 9, 16};
-    SDL_Rect fscreen = {0, 0, 720, 400};
+
     uint8_t *buf = (uint8_t *)0xB8000;
 
     for (int y = 0; y < 25; y++)
@@ -104,10 +94,9 @@ Uint32 update_screen(Uint32 intvl, void *param)
             rcDest.x = x * 9;
 
             SDL_FillRect(screen, &rcDest, SDL_MapRGB(screen->format, colors[buf[1] >> 4][0], colors[buf[1] >> 4][1], colors[buf[1] >> 4][2]));
+            SDL_SetPalette(font, SDL_LOGPAL, &(SDL_Color){ colors[buf[1] & 0xF][0], colors[buf[1] & 0xF][1], colors[buf[1] & 0xF][2] }, 1, 1);
+            SDL_BlitSurface(font, &rcSrc, screen, &rcDest);
 
-            SDL_SetPalette(font[0], SDL_LOGPAL, &(SDL_Color){ colors[buf[1] & 0xF][0], colors[buf[1] & 0xF][1], colors[buf[1] & 0xF][2] }, 1, 1);
-
-            SDL_BlitSurface(font[0], &rcSrc, screen, &rcDest);
             buf += 2;
         }
     }
