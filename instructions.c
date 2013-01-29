@@ -62,6 +62,8 @@ void init_instructions(void)
 {
     handle_tb_opcode[0x00] = &ltr_lldt;
     handle_tb_opcode[0x01] = &lgdt_lidt;
+    handle_tb_opcode[0x20] = &mov_from_cr;
+    handle_tb_opcode[0x22] = &mov_to_cr;
 }
 
 int out_dx_al(uint8_t *instr_base, struct sigcontext *ctx)
@@ -102,6 +104,22 @@ int two_byte_instr(uint8_t *instr_base, struct sigcontext *ctx)
     if (ret)
         return ++ret;
     return 0;
+}
+
+int mov_from_cr(uint8_t *instr_base, struct sigcontext *ctx)
+{
+    if ((instr_base[2] & 0xDF) != 0xC0)
+        return 0;
+
+    return 2;
+}
+
+int mov_to_cr(uint8_t *instr_base, struct sigcontext *ctx)
+{
+    if ((instr_base[2] & 0xDF) != 0xC0)
+        return 0;
+
+    return 2;
 }
 
 int ltr_lldt(uint8_t *instr_base, struct sigcontext *ctx)
@@ -475,6 +493,43 @@ int mov_sreg_reg(uint8_t *instr_base, struct sigcontext *ctx)
     dprintf(" -> %s is now 0x%04X\n", name_sreg[dst], val);
 
     return 2;
+}
+
+int hlt(uint8_t *instr_base, struct sigcontext *ctx)
+{
+    //IOPL überprüfen
+    if ((cs & 0x07) > ((eflags & 0x3000) >> 12))
+    {
+        dprintf(" -> GPF because CPL > RPL\n");
+        exception(EXCEPTION_GPF, ctx);
+    }
+
+    if (!(eflags & 0x00000200))
+    {
+        dprintf("hlt with IF not set, halting.\n");
+
+        for (;;)
+            sleep(1);
+    }
+
+    // Hmmmm, TODO?
+    return 1;
+}
+
+int cli(uint8_t *instr_base, struct sigcontext *ctx)
+{
+    dprintf("cli\n");
+
+    //IOPL überprüfen
+    if ((cs & 0x07) > ((eflags & 0x3000) >> 12))
+    {
+        dprintf(" -> GPF because CPL > RPL\n");
+        exception(EXCEPTION_GPF, ctx);
+    }
+
+    eflags &= ~0x00000200;
+
+    return 1;
 }
 
 int sti(uint8_t *instr_base, struct sigcontext *ctx)

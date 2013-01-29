@@ -31,6 +31,8 @@ void init_segfault_handler(void)
     handle_opcode[0x8E] = &mov_sreg_reg;
     handle_opcode[0xEA] = &far_jmp;
     handle_opcode[0xEE] = &out_dx_al;
+    handle_opcode[0xF4] = &hlt;
+    handle_opcode[0xFA] = &cli;
     handle_opcode[0xFB] = &sti;
 }
 
@@ -80,6 +82,8 @@ void segfault_handler(int num, struct sigcontext ctx)
     printf("Unhandled segfault. All our base are belong to the OS.\n");
     printf("EIP: 0x%08X\n", (unsigned int)ctx.eip);
     printf("CR2: 0x%08X\n", (unsigned int)ctx.cr2);
+    printf("EAX: 0x%08X   EBX: 0x%08X   ECX: 0x%08X   EDX: 0x%08X\n", (unsigned int)ctx.eax, (unsigned int)ctx.ebx, (unsigned int)ctx.ecx, (unsigned int)ctx.edx);
+    printf("ESI: 0x%08X   EDI: 0x%08X   EBP: 0x%08X   ESP: 0x%08X\n", (unsigned int)ctx.esi, (unsigned int)ctx.edi, (unsigned int)ctx.ebp, (unsigned int)ctx.esp);
     printf("Instructions: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", instr[0], instr[1], instr[2], instr[3], instr[4], instr[5]);
 
     printf("Disassembling...\n");

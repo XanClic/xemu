@@ -31,7 +31,7 @@ void init_sdl(void)
         exit(EXIT_FAILURE);
     }
 
-    system("cd imgs && tar -xjf pics.tar.bz2");
+    //system("cd imgs && tar -xjf pics.tar.bz2");
 
     SDL_WM_SetCaption("xemu", NULL);
 
@@ -58,13 +58,34 @@ void init_sdl(void)
     {
         char name[20];
         sprintf(name, "imgs/font%i.bmp", i);
-        font[i] = SDL_LoadBMP(name);
+        font[i] = SDL_LoadBMP("imgs/font.bmp");
+
+        SDL_SetColorKey(font[i], SDL_SRCCOLORKEY, 0);
     }
 
-    system("rm imgs/*.bmp");
+    //system("rm imgs/*.bmp");
 
     upscreentimer = SDL_AddTimer(10, &update_screen, NULL);
 }
+
+static int colors[16][3] = {
+    {   0,   0,   0 },
+    {   0,   0, 176 },
+    {   0, 176,   0 },
+    {   0, 176, 176 },
+    { 176,   0,   0 },
+    { 176,   0, 176 },
+    { 176, 176,   0 },
+    { 176, 176, 176 },
+    {  88,  88,  88 },
+    {  88,  88, 255 },
+    {  88, 255,  88 },
+    {  88, 255, 255 },
+    { 255,  88,  88 },
+    { 255,  88, 255 },
+    { 255, 255,  88 },
+    { 255, 255, 255 }
+};
 
 Uint32 update_screen(Uint32 intvl, void *param)
 {
@@ -73,7 +94,6 @@ Uint32 update_screen(Uint32 intvl, void *param)
     SDL_Rect fscreen = {0, 0, 720, 400};
     uint8_t *buf = (uint8_t *)0xB8000;
 
-    SDL_FillRect(screen, &fscreen, SDL_MapRGB(screen->format, 0, 0, 0));
     for (int y = 0; y < 25; y++)
     {
         rcDest.y = y * 16;
@@ -82,7 +102,12 @@ Uint32 update_screen(Uint32 intvl, void *param)
             rcSrc.x = (buf[0] % 32) * 9;
             rcSrc.y = ((int)(buf[0] / 32)) * 16;
             rcDest.x = x * 9;
-            SDL_BlitSurface(font[buf[1] & 0xF], &rcSrc, screen, &rcDest);
+
+            SDL_FillRect(screen, &rcDest, SDL_MapRGB(screen->format, colors[buf[1] >> 4][0], colors[buf[1] >> 4][1], colors[buf[1] >> 4][2]));
+
+            SDL_SetPalette(font[0], SDL_LOGPAL, &(SDL_Color){ colors[buf[1] & 0xF][0], colors[buf[1] & 0xF][1], colors[buf[1] & 0xF][2] }, 1, 1);
+
+            SDL_BlitSurface(font[0], &rcSrc, screen, &rcDest);
             buf += 2;
         }
     }
