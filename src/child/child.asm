@@ -15,14 +15,12 @@ mov     ecx,0x07fff000 ; size
 mov     edx,0x7     ; PROT_READ | PROT_WRITE | PROT_EXEC
 mov     esi,0x11    ; MAP_SHARED | MAP_FIXED
 mov     edi,15      ; file descriptor
-mov     ebp,4096    ; offset
+mov     ebp,1       ; offset
 int     0x80
 
 
-push eax
-
-
-jmp $
+; segfault for alerting hypervisor
+cli
 
 
 ; force whole page to be RWX
