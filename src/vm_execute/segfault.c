@@ -17,30 +17,35 @@
 #define regval(v) ((v) & 0xffffffff)
 
 
-static void unhandled_segfault(pid_t pid)
+static void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_struct *regs)
 {
-    struct user_regs_struct regs;
-    siginfo_t siginfo;
-
-    // One's used, the other's ignored. Who cares which is which.
-    ptrace(PTRACE_GETREGS, pid, &regs, &regs);
-    ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo);
-
-    uint32_t cr2 = (uintptr_t)siginfo.si_addr;
 
     fprintf(stderr, "\n=== unhandled segfault ===\n\n");
 
-    fprintf(stderr, "eax: 0x%08llx   ebx: 0x%08llx   ecx: 0x%08llx   edx: 0x%08llx\n", regval(regs.rax), regval(regs.rbx), regval(regs.rcx), regval(regs.rdx));
-    fprintf(stderr, "esi: 0x%08llx   edi: 0x%08llx   ebp: 0x%08llx   esp: 0x%08llx\n", regval(regs.rsi), regval(regs.rdi), regval(regs.rbp), regval(regs.rsp));
+    switch (siginfo->si_code)
+    {
+        case SEGV_MAPERR:
+        case SEGV_ACCERR:
+            fprintf(stderr, "Page fault @0x%08lx\n\n", (uintptr_t)siginfo->si_addr);
+            break;
+        case SI_KERNEL:
+            fprintf(stderr, "General protection fault\n\n");
+            break;
+        default:
+            fprintf(stderr, "Unknown exception code %i\n\n", siginfo->si_code);
+            break;
+    }
 
-    fprintf(stderr, "eip: 0x%08llx   efl: 0x%08llx    cs: 0x%08llx    ss: 0x%08llx\n", regval(regs.rip), regval(regs.eflags), regval(regs.cs), regval(regs.ss));
-    fprintf(stderr, " ds: 0x%08llx    es: 0x%08llx    fs: 0x%08llx    gs: 0x%08llx\n\n", regval(regs.ds), regval(regs.es), regval(regs.fs), regval(regs.gs));
+    fprintf(stderr, "eax: 0x%08llx   ebx: 0x%08llx   ecx: 0x%08llx   edx: 0x%08llx\n", regval(regs->rax), regval(regs->rbx), regval(regs->rcx), regval(regs->rdx));
+    fprintf(stderr, "esi: 0x%08llx   edi: 0x%08llx   ebp: 0x%08llx   esp: 0x%08llx\n", regval(regs->rsi), regval(regs->rdi), regval(regs->rbp), regval(regs->rsp));
 
-    fprintf(stderr, "   cr2:    0x%08x\n", (unsigned)cr2);
-    fprintf(stderr, "cs:eip: %04llx:%08llx\nss:esp: %04llx:%08llx\n\n", regval(regs.cs), regval(regs.rip), regval(regs.ss), regval(regs.rsp));
+    fprintf(stderr, "eip: 0x%08llx   efl: 0x%08llx    cs: 0x%08llx    ss: 0x%08llx\n", regval(regs->rip), regval(regs->eflags), regval(regs->cs), regval(regs->ss));
+    fprintf(stderr, " ds: 0x%08llx    es: 0x%08llx    fs: 0x%08llx    gs: 0x%08llx\n\n", regval(regs->ds), regval(regs->es), regval(regs->fs), regval(regs->gs));
+
+    fprintf(stderr, "cs:eip: %04llx:%08llx\nss:esp: %04llx:%08llx\n\n", regval(regs->cs), regval(regs->rip), regval(regs->ss), regval(regs->rsp));
 
 
-    uint8_t *instr = (uint8_t *)adr_g2h(regs.rip);
+    uint8_t *instr = (uint8_t *)adr_g2h(regs->rip);
 
     fprintf(stderr, "Next instructions: %02x %02x %02x %02x %02x %02x\n", instr[0], instr[1], instr[2], instr[3], instr[4], instr[5]);
 
@@ -61,7 +66,31 @@ static void unhandled_segfault(pid_t pid)
 
 bool handle_segfault(pid_t vm_pid)
 {
-    unhandled_segfault(vm_pid);
+    struct user_regs_struct regs;
+    siginfo_t siginfo;
+
+    // One's used, the other's ignored. Who cares which is which.
+    ptrace(PTRACE_GETREGS, vm_pid, &regs, &regs);
+    ptrace(PTRACE_GETSIGINFO, vm_pid, NULL, &siginfo);
+
+
+    switch (siginfo.si_code)
+    {
+        case SEGV_MAPERR:
+        case SEGV_ACCERR:
+            // TODO: Throw exception
+            break;
+        case SI_KERNEL:
+            if (emulate(&regs))
+            {
+                ptrace(PTRACE_SETREGS, vm_pid, &regs, &regs);
+                return true;
+            }
+    }
+
+
+    unhandled_segfault(vm_pid, &siginfo, &regs);
+
 
     return false;
 }

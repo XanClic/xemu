@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     ftruncate(shmfd, 0x08000000);
     dup2(shmfd, 15);
 
-    mmap(0x100000000, 0x08000000, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, 15, 0);
+    mmap((void *)0x100000000, 0x08000000, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, 15, 0);
 
 
     uintptr_t kernel_entry = load_elf(kernel);
