@@ -20,6 +20,7 @@ extern pid_t vm_pid;
 enum opcode
 {
     mov_sr_r16  = 0x8e,
+    retf        = 0xcb,
     jmp_far     = 0xea,
     hlt         = 0xf4,
     cli         = 0xfa,
@@ -87,6 +88,7 @@ static bool decode_opcode(uint8_t **stream, instruction_t *instr)
             break;
         case cli:
         case hlt:
+        case retf:
             instr->operand_type = NONE;
             break;
         default:
@@ -233,6 +235,12 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
         case jmp_far:
             regs->cs  = load_seg_reg(CS, instr->far_ptr.seg);
             regs->rip = instr->far_ptr.ofs;
+            return true;
+        case retf:
+            regs->rip = *(uint32_t *)adr_g2h(regs->rsp + gdt_desc_cache[SS].base);
+            regs->rsp += 4;
+            regs->cs  = load_seg_reg(CS, *(uint32_t *)adr_g2h(regs->rsp + gdt_desc_cache[SS].base) & 0xffff);
+            regs->rsp += 4;
             return true;
         case mov_sr_r16:
             assert((int)(uintptr_t)instr->target >= 0); // TODO: #UD

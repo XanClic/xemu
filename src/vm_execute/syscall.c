@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/ptrace.h>
@@ -14,6 +15,7 @@
 
 extern void *vm_comm_area;
 extern pid_t vm_pid;
+extern bool sys_segs_set_up;
 
 
 uint32_t vm_execute_syscall(uint32_t sysc_no, int parcount, ...)
@@ -24,6 +26,12 @@ uint32_t vm_execute_syscall(uint32_t sysc_no, int parcount, ...)
 
 
     regs.rip = COMM_GUEST_ADDR + 4092;
+    if (sys_segs_set_up)
+    {
+        regs.cs  = 0x2007;
+        regs.ds  = 0x200f;
+        regs.es  = 0x200f;
+    }
 
     // int 0x80
     ((uint8_t *)vm_comm_area)[4092] = 0xcd;

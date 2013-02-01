@@ -70,6 +70,11 @@ mov     gs,ax
 mov     ss,ax
 
 
+; multiboot information
+mov     eax,0x2badb002
+mov     ebx,0x00010000
+
+
 mov     edx,[entry_point+0x000f4000]
 jmp     edx
 

@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
         memcpy((void *)adr_g2h(mods[i].string), argv[modules[i]], len);
 
         // Sieht schöner aus. GRUB und so scheinen das auch zu machen.
-        base = (base + sz + len + 4095) & ~0xFFF;
+        base = (base + sz + len + 4095) & ~0xfff;
     }
 
 
@@ -161,15 +161,15 @@ int main(int argc, char *argv[])
     mm[0].type   = 0;
     mm[1].size   = 20;
     mm[1].base   = 0x00001000;
-    mm[1].length = 0x0009F000;
+    mm[1].length = 0x0009f000;
     mm[1].type   = 1;
     mm[2].size   = 20;
-    mm[2].base   = 0x000A0000;
+    mm[2].base   = 0x000a0000;
     mm[2].length = 0x00060000;
     mm[2].type   = 0;
     mm[3].size   = 20;
     mm[3].base   = 0x00100000;
-    mm[3].length = 0x07F00000;
+    mm[3].length = 0x07f00000;
     mm[3].type   = 1;
 
 
