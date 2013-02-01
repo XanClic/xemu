@@ -21,7 +21,7 @@
 static const const char *seg_name[] = { "cs", "ds", "es", "fs", "gs", "ss" };
 
 
-void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_struct *regs)
+static void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_struct *regs)
 {
 
     fprintf(stderr, "\n=== unhandled segfault ===\n\n");
