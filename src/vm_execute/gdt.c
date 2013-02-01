@@ -16,9 +16,6 @@ extern void *vm_comm_area;
 
 void gdt_update(void)
 {
-    struct user_regs_struct regs;
-
-
     int entries = (gdtr.limit + 1) / 8;
 
     struct gdt_desc *gdt = (struct gdt_desc *)adr_g2h(gdtr.base);

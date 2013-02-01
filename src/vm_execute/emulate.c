@@ -2,7 +2,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/ptrace.h>
 #include <sys/user.h>
 
 #include "execute.h"
@@ -11,10 +14,15 @@
 #include "system_state.h"
 
 
+extern pid_t vm_pid;
+
+
 enum opcode
 {
     mov_sr_r16  = 0x8e,
     jmp_far     = 0xea,
+    hlt         = 0xf4,
+    cli         = 0xfa,
     mov_r32_crX = 0x0f20,
     mov_crX_r32 = 0x0f22,
     lXdt        = 0x0f01,
@@ -76,6 +84,10 @@ static bool decode_opcode(uint8_t **stream, instruction_t *instr)
         case jmp_far:
             instr->operand_type = FAR_PTR32;
             instr->selector_reg = CS;
+            break;
+        case cli:
+        case hlt:
+            instr->operand_type = NONE;
             break;
         default:
             return false;
@@ -226,6 +238,19 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
             assert((int)(uintptr_t)instr->target >= 0); // TODO: #UD
             *(uint16_t *)((uintptr_t)regs + sreg_ofs[(uintptr_t)instr->target]) = load_seg_reg((uintptr_t)instr->target, *instr->source & 0xffff);
             return true;
+        case cli:
+            int_flag = false;
+            return true;
+        case hlt:
+            if (!int_flag)
+            {
+                printf("HLT called while IF=0. Killing the VM and halting.\n");
+                ptrace(PTRACE_KILL, vm_pid, NULL, NULL);
+                for (;;)
+                    sleep(1);
+            }
+            // TODO
+            return true;
     }
 
     return false;
@@ -236,7 +261,7 @@ bool emulate(struct user_regs_struct *regs)
 {
     uint8_t *instr_stream = (uint8_t *)adr_g2h(regs->rip);
 
-    instruction_t instr;
+    instruction_t instr = { 0 };
     if (!decode_opcode(&instr_stream, &instr))
         return false;
 

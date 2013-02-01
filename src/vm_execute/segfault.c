@@ -18,6 +18,9 @@
 #define regval(v) ((v) & 0xffffffff)
 
 
+static const const char *seg_name[] = { "cs", "ds", "es", "fs", "gs", "ss" };
+
+
 static void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_struct *regs)
 {
 
@@ -49,9 +52,9 @@ static void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_s
 
     fprintf(stderr, "Segment cache:\n");
     for (int i = 0; i < SEL_COUNT; i++)
-        fprintf(stderr, "0x%08x   0x%08x   %i   %s %c%c %s\n", gdt_desc_cache[i].base, gdt_desc_cache[i].limit, gdt_desc_cache[i].privilege, gdt_desc_cache[i].present ? "p" : "!p", gdt_desc_cache[i].code ? 'x' : 'r', gdt_desc_cache[i].rw ? (gdt_desc_cache[i].code ? 'r' : 'w') : '-', gdt_desc_cache[i].size ? "32" : "16");
+        fprintf(stderr, "%s:  0x%08x   0x%08x   dpl=%i  %s %c%c %s\n", seg_name[i], gdt_desc_cache[i].base, gdt_desc_cache[i].limit, gdt_desc_cache[i].privilege, gdt_desc_cache[i].present ? "p" : "!p", gdt_desc_cache[i].code ? 'x' : 'r', gdt_desc_cache[i].rw ? (gdt_desc_cache[i].code ? 'r' : 'w') : '-', gdt_desc_cache[i].size ? "32b" : "16b");
 
-    fprintf(stderr, "\n");
+    fprintf(stderr, "\nVCPU state: IF=%i IOPL=%i\n\n", int_flag, iopl);
 
 
     uint8_t *instr = (uint8_t *)adr_g2h(regs->rip);
