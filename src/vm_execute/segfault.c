@@ -57,7 +57,7 @@ static void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_s
     fprintf(stderr, "\nVCPU state: IF=%i IOPL=%i\n\n", int_flag, iopl);
 
 
-    uint8_t *instr = (uint8_t *)adr_g2h(regs->rip);
+    uint8_t *instr = adr_g2h(regs->rip);
 
     fprintf(stderr, "Next instructions: %02x %02x %02x %02x %02x %02x\n", instr[0], instr[1], instr[2], instr[3], instr[4], instr[5]);
 

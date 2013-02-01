@@ -15,8 +15,6 @@ SDL_TimerID upscreentimer;
 
 void init_sdl(void)
 {
-    SDL_Surface *logo;
-
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1)
     {
         fprintf(stderr, "Cannot init SDL: %s\n", SDL_GetError());
@@ -71,11 +69,14 @@ static int colors[16][3] = {
 
 Uint32 update_screen(Uint32 intvl, void *param)
 {
+    (void)intvl;
+    (void)param;
+
+
     SDL_Rect rcDest = {0, 0, 9, 16};
     SDL_Rect rcSrc = {0, 0, 9, 16};
 
-    // TODO: keep physical
-    uint8_t *buf = (uint8_t *)adr_g2h(0xb8000);
+    uint8_t *buf = (uint8_t *)adr_p2h(0xb8000);
 
     for (int y = 0; y < 25; y++)
     {

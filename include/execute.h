@@ -13,4 +13,6 @@ bool emulate(struct user_regs_struct *regs);
 
 uint32_t vm_execute_syscall(uint32_t sysc_no, int parcount, ...);
 
+void update_cr(int cri);
+
 #endif

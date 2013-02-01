@@ -34,12 +34,12 @@ uintptr_t load_elf(void *elf_base)
         if (prg_hdr[i].p_type != PT_LOAD)
             continue;
 
-        memset((void *)adr_g2h(prg_hdr[i].p_paddr), 0, prg_hdr[i].p_memsz);
+        memset(adr_g2h(prg_hdr[i].p_paddr), 0, prg_hdr[i].p_memsz);
 
         if (!prg_hdr[i].p_filesz)
             continue;
 
-        memcpy((void *)adr_g2h(prg_hdr[i].p_paddr), (const void *)((uintptr_t)elf_base + prg_hdr[i].p_offset), prg_hdr[i].p_filesz);
+        memcpy(adr_g2h(prg_hdr[i].p_paddr), (const void *)((uintptr_t)elf_base + prg_hdr[i].p_offset), prg_hdr[i].p_filesz);
    }
 
 

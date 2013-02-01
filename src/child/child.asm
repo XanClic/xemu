@@ -75,6 +75,10 @@ mov     eax,0x2badb002
 mov     ebx,0x00010000
 
 
+; safe stack
+mov     esp,0x000a0000
+
+
 mov     edx,[entry_point+0x000f4000]
 jmp     edx
 

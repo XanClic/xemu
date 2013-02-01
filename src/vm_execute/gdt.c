@@ -58,7 +58,7 @@ void gdt_update(void)
 {
     int entries = (gdtr.limit + 1) / 8;
 
-    struct gdt_desc *gdt = (struct gdt_desc *)adr_g2h(gdtr.base);
+    struct gdt_desc *gdt = adr_g2h(gdtr.base);
 
     for (int i = 1; i < entries; i++)
         ldt_from_gdt(i, &gdt[i]);

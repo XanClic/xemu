@@ -157,16 +157,16 @@ static bool decode_operands(uint8_t **stream, instruction_t *instr, const struct
                         return false;
                     if (rm == 5) // disp
                     {
-                        rmptr = (uint32_t *)adr_g2h(*(uint32_t *)*stream);
+                        rmptr = adr_g2h(*(uint32_t *)*stream);
                         *stream += 4;
                     }
                     else
-                        rmptr = (uint32_t *)adr_g2h(*rmptr + gdt_desc_cache[instr->selector_reg].base);
+                        rmptr = adr_g2h(*rmptr + gdt_desc_cache[instr->selector_reg].base);
                     break;
                 case 1:
                     if (rm == 4) // SIB
                         return false;
-                    rmptr = (uint32_t *)adr_g2h(*rmptr + (int8_t)*((*stream)++) + gdt_desc_cache[instr->selector_reg].base);
+                    rmptr = adr_g2h(*rmptr + (int8_t)*((*stream)++) + gdt_desc_cache[instr->selector_reg].base);
                     break;
                 case 2:
                 {
@@ -174,7 +174,7 @@ static bool decode_operands(uint8_t **stream, instruction_t *instr, const struct
                         return false;
                     uint32_t disp = *(uint32_t *)*stream;
                     *stream += 4;
-                    rmptr = (uint32_t *)adr_g2h(*rmptr + disp + gdt_desc_cache[instr->selector_reg].base);
+                    rmptr = adr_g2h(*rmptr + disp + gdt_desc_cache[instr->selector_reg].base);
                 }
             }
 
@@ -224,8 +224,11 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
     switch ((int)instr->op)
     {
         case mov_r32_crX:
+            *instr->target = *instr->source;
+            return true;
         case mov_crX_r32:
             *instr->target = *instr->source;
+            update_cr(instr->target - &cr[0]);
             return true;
         case lgdt:
             gdtr.limit = *(uint16_t *)instr->source;
@@ -267,7 +270,7 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
 
 bool emulate(struct user_regs_struct *regs)
 {
-    uint8_t *instr_stream = (uint8_t *)adr_g2h(regs->rip);
+    uint8_t *instr_stream = adr_g2h(regs->rip);
 
     instruction_t instr = { 0 };
     if (!decode_opcode(&instr_stream, &instr))

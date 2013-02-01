@@ -14,6 +14,7 @@
 #include "forker.h"
 #include "memory.h"
 #include "multiboot.h"
+#include "paging.h"
 
 
 extern void init_sdl(void);
@@ -93,9 +94,12 @@ int main(int argc, char *argv[])
     dup2(shmfd, 15);
     close(shmfd);
 
-    ftruncate(15, 0x08000000);
+    ftruncate(15, MEMSZ);
 
-    mmap((void *)0x100000000, 0x08000000, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, 15, 0);
+    mmap(adr_p2h(0), MEMSZ, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, 15, 0);
+
+
+    full_paging_update();
 
 
     uintptr_t kernel_entry = load_elf(kernel);
@@ -108,7 +112,7 @@ int main(int argc, char *argv[])
 
 
     // FIXME: Lass ma Multibootheader checken
-    struct multiboot_info *mbi = (struct multiboot_info *)adr_g2h(0x00010000);
+    struct multiboot_info *mbi = adr_g2h(0x00010000);
     mbi->mi_flags = (1 << 6) | (1 << 3);
     mbi->mem_lower = 576;
     mbi->mem_upper = 127 * 1024;
@@ -119,12 +123,12 @@ int main(int argc, char *argv[])
     mbi->mmap_addr = 0x00011000;
 
 
-    strcpy((char *)adr_g2h(mbi->cmdline), kname);
+    strcpy(adr_g2h(mbi->cmdline), kname);
 
 
     uintptr_t base = 0x00013000;
 
-    struct multiboot_module *mods = (struct multiboot_module *)adr_g2h(mbi->mods_addr);
+    struct multiboot_module *mods = adr_g2h(mbi->mods_addr);
     for (int i = 0; i < mod_count; i++)
     {
         FILE *fp = fopen(argv[modules[i]], "rb");
@@ -138,7 +142,7 @@ int main(int argc, char *argv[])
         size_t sz = ftell(fp);
         rewind(fp);
 
-        fread((void *)adr_g2h(base), 1, sz, fp);
+        fread(adr_g2h(base), 1, sz, fp);
 
         fclose(fp);
 
@@ -147,14 +151,14 @@ int main(int argc, char *argv[])
         mods[i].string    = base + sz;
 
         size_t len = strlen(argv[modules[i]]) + 1;
-        memcpy((void *)adr_g2h(mods[i].string), argv[modules[i]], len);
+        memcpy(adr_g2h(mods[i].string), argv[modules[i]], len);
 
         // Sieht schöner aus. GRUB und so scheinen das auch zu machen.
         base = (base + sz + len + 4095) & ~0xfff;
     }
 
 
-    struct memory_map *mm = (struct memory_map *)adr_g2h(mbi->mmap_addr);
+    struct memory_map *mm = adr_g2h(mbi->mmap_addr);
     mm[0].size   = 20;
     mm[0].base   = 0x00000000;
     mm[0].length = 0x00001000;
