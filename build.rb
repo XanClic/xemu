@@ -21,7 +21,7 @@ end
 incdirs = ['include']
 
 cc = 'gcc'
-cflags = "-std=c11 -O3 -g2 -Wall -Wextra #{incdirs.map { |d| "'-I#{d}'" } * ' '}"
+cflags = "-std=c11 -O3 -g2 -Wall -Wextra #{incdirs.map { |d| "'-I#{d}'" } * ' '} #{`sdl-config --cflags`.chomp}"
 cld = 'gcc'
 cldflags = ''
 asm = 'fasm'
@@ -61,6 +61,6 @@ end
 
 child = 'src__child__child.asm.o'
 
-exec("#{cld} #{cldflags} #{objs.reject { |o| File.basename(o) == child }.map { |o| "'#{o}'" } * ' '} -o xemu -lrt")
+exec("#{cld} #{cldflags} #{objs.reject { |o| File.basename(o) == child }.map { |o| "'#{o}'" } * ' '} -o xemu -lrt #{`sdl-config --cflags --libs`.gsub("\n", ' ')}")
 
 exec("#{asmld} #{asmldflags} obj/#{child} -o child")
