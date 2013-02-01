@@ -84,8 +84,10 @@ int main(int argc, char *argv[])
 
 
     int shmfd = shm_open("/xemu_phys_ram", O_RDWR | O_CREAT, 0777);
-    ftruncate(shmfd, 0x08000000);
     dup2(shmfd, 15);
+    close(shmfd);
+
+    ftruncate(15, 0x08000000);
 
     mmap((void *)0x100000000, 0x08000000, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, 15, 0);
 
@@ -99,10 +101,10 @@ int main(int argc, char *argv[])
     }
 
 
-    pid_t vm = fork_vm();
+    fork_vm(kernel_entry);
 
 
-    execute_vm(vm, kernel_entry);
+    execute_vm();
 
 
     return EXIT_SUCCESS;

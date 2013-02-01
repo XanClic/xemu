@@ -12,6 +12,7 @@
 
 #include "execute.h"
 #include "memory.h"
+#include "system_state.h"
 
 
 #define regval(v) ((v) & 0xffffffff)
@@ -44,6 +45,14 @@ static void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_s
 
     fprintf(stderr, "cs:eip: %04llx:%08llx\nss:esp: %04llx:%08llx\n\n", regval(regs->cs), regval(regs->rip), regval(regs->ss), regval(regs->rsp));
 
+    fprintf(stderr, "cr0: 0x%08x   cr2: 0x%08x   cr3: 0x%08x   cr4: 0x%08x\n\n", cr[0], cr[2], cr[3], cr[4]);
+
+    fprintf(stderr, "Segment cache:\n");
+    for (int i = 0; i < SEL_COUNT; i++)
+        fprintf(stderr, "0x%08x   0x%08x   %i   %s %c%c %s\n", gdt_desc_cache[i].base, gdt_desc_cache[i].limit, gdt_desc_cache[i].privilege, gdt_desc_cache[i].present ? "p" : "!p", gdt_desc_cache[i].code ? 'x' : 'r', gdt_desc_cache[i].rw ? (gdt_desc_cache[i].code ? 'r' : 'w') : '-', gdt_desc_cache[i].size ? "32" : "16");
+
+    fprintf(stderr, "\n");
+
 
     uint8_t *instr = (uint8_t *)adr_g2h(regs->rip);
 
@@ -55,7 +64,7 @@ static void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_s
     {
         fwrite(instr, 1, 10, ffp);
         fclose(ffp);
-        system("echo \"Disassembly:       `ndisasm -u /tmp/failed_code.bin | head -n 1 | tail -c +11 | sed -e 's/[[:space:]]/\\n\\t/'`\" | sed -e 's/\\t/        /' >&2");
+        system("echo \"Disassembly:       `ndisasm -u /tmp/failed_code.bin | head -n 1 | tail -c +11 | sed -e 's/[[:space:]]\\+/\\n\\t/'`\" | sed -e 's/\\t/                   /' >&2");
         remove("/tmp/failed_code.bin");
     }
 

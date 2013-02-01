@@ -29,7 +29,7 @@ asmflags = ''
 asmout = ''
 asmquiet = true
 asmld = 'ld'
-asmldflags = '-e _start -Ttext 0xFFFFD000 -Tbss 0xFFFFD800 -melf_i386'
+asmldflags = '-e _start -Ttext 0xFFFFC000 -Tbss 0xFFFFC800 -melf_i386'
 
 
 system('mkdir -p obj')

@@ -7,9 +7,17 @@
 #include <sys/wait.h>
 
 #include "execute.h"
+#include "gdt.h"
 
 
-void execute_vm(pid_t vm_pid, uintptr_t entry)
+// TODO: Trap int 0x80 (if the VM guest should execute it)
+
+
+extern void *vm_comm_area;
+extern pid_t vm_pid;
+
+
+void execute_vm(void)
 {
     for (;;)
     {
@@ -19,21 +27,8 @@ void execute_vm(pid_t vm_pid, uintptr_t entry)
         assert(WIFSTOPPED(status));
 
         if (WSTOPSIG(status) == SIGSEGV)
-        {
-            if (entry)
-            {
-                struct user_regs_struct regs;
-                ptrace(PTRACE_GETREGS, vm_pid, &regs, &regs);
-
-                regs.rip = entry;
-
-                ptrace(PTRACE_SETREGS, vm_pid, &regs, &regs);
-
-                entry = 0;
-            }
-            else if (!handle_segfault(vm_pid))
+            if (!handle_segfault(vm_pid))
                 return;
-        }
 
         ptrace(PTRACE_CONT, vm_pid, NULL, NULL);
     }

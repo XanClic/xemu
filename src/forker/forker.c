@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -20,11 +21,26 @@
 #endif
 
 
-pid_t fork_vm(void)
-{
-    pid_t child;
+void *vm_comm_area;
 
-    if (!(child = fork()))
+pid_t vm_pid;
+
+
+pid_t fork_vm(uintptr_t entry)
+{
+    int commfd = shm_open("/xemu_vm_comm", O_RDWR | O_CREAT, 0777);
+    dup2(commfd, 14);
+    close(commfd);
+
+    ftruncate(14, 4096);
+
+    vm_comm_area = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, 14, 0);
+
+
+    *(uint32_t *)vm_comm_area = entry;
+
+
+    if (!(vm_pid = fork()))
     {
         ptrace(PTRACE_TRACEME, 0, NULL, NULL);
         raise(SIGSTOP);
@@ -35,9 +51,9 @@ pid_t fork_vm(void)
     }
 
 
-    ptrace(PTRACE_ATTACH, child, NULL, NULL);
-    ptrace(PTRACE_SETOPTIONS, child, NULL, (void *)(PTRACE_O_TRACEEXEC | PTRACE_O_EXITKILL));
+    ptrace(PTRACE_ATTACH, vm_pid, NULL, NULL);
+    ptrace(PTRACE_SETOPTIONS, vm_pid, NULL, (void *)(PTRACE_O_TRACEEXEC | PTRACE_O_EXITKILL));
 
 
-    return child;
+    return vm_pid;
 }
