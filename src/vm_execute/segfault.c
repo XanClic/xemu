@@ -12,6 +12,7 @@
 
 #include "execute.h"
 #include "memory.h"
+#include "paging.h"
 #include "system_state.h"
 
 
@@ -88,9 +89,17 @@ bool handle_segfault(pid_t vm_pid)
 
     switch (siginfo.si_code)
     {
-        case SEGV_MAPERR:
         case SEGV_ACCERR:
             // TODO: Throw exception
+            break;
+        case SEGV_MAPERR:
+            if (trymap((uintptr_t)siginfo.si_addr))
+            {
+                // must be restored
+                ptrace(PTRACE_SETREGS, vm_pid, &regs, &regs);
+                return true;
+            }
+            // TODO: Throw exception (if paging is enabled)
             break;
         case SI_KERNEL:
             if (emulate(&regs))

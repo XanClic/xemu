@@ -14,6 +14,7 @@
 #include <sys/user.h>
 
 #include "forker.h"
+#include "memory.h"
 
 
 #ifndef PTRACE_O_EXITKILL
@@ -34,7 +35,7 @@ pid_t fork_vm(uintptr_t entry)
 
     ftruncate(14, 4096);
 
-    vm_comm_area = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, 14, 0);
+    vm_comm_area = mmap(adr_g2h(0xffffd000), 4096, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, 14, 0);
 
 
     *(uint32_t *)vm_comm_area = entry;
