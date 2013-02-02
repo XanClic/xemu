@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
     struct multiboot_info *mbi = adr_g2h(0x00010000);
     mbi->mi_flags = (1 << 6) | (1 << 3);
     mbi->mem_lower = 576;
-    mbi->mem_upper = 127 * 1024;
+    mbi->mem_upper = MEMSZ - 10485876;
     mbi->cmdline = 0x00010800;
     mbi->mods_count = mod_count;
     mbi->mods_addr = 0x00012000;
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
     mm[2].type   = 0;
     mm[3].size   = 20;
     mm[3].base   = 0x00100000;
-    mm[3].length = 0x07f00000;
+    mm[3].length = MEMSZ - 1048576;
     mm[3].type   = 1;
 
 
