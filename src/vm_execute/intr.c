@@ -76,14 +76,16 @@ bool execute_interrupt(struct user_regs_struct *regs, int vector, uint32_t errco
 
         unhandled_segfault(vm_pid, &siginfo, regs);
 
+        return false;
+
         /*
-        *(--stack) = regs->ss;
+        *(--stack) = seg_h2g(regs->ss);
         *(--stack) = regs->rsp;
         */
     }
 
     *(--stack) = regs->eflags;
-    *(--stack) = regs->cs;
+    *(--stack) = seg_h2g(regs->cs);
     *(--stack) = regs->rip;
 
 

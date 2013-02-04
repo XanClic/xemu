@@ -26,6 +26,7 @@ enum opcode
 {
     mov_sr_r16  = 0x8e,
     retf        = 0xcb,
+    iret        = 0xcf,
     out_ii_al   = 0xe6,
     jmp_far     = 0xea,
     out_dx_al   = 0xee,
@@ -119,6 +120,7 @@ static bool decode_opcode(uint8_t **stream, instruction_t *instr)
         case sti:
         case hlt:
         case retf:
+        case iret:
             instr->operand_type = NONE;
             break;
         case out_dx_al:
@@ -297,11 +299,33 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
             regs->rip = instr->far_ptr.ofs;
             return true;
         case retf:
-            regs->rip = *(uint32_t *)adr_g2h(regs->rsp + gdt_desc_cache[SS].base);
-            regs->rsp += 4;
-            regs->cs  = load_seg_reg(CS, *(uint32_t *)adr_g2h(regs->rsp + gdt_desc_cache[SS].base) & 0xffff);
-            regs->rsp += 4;
+        {
+            uint32_t *stack = adr_g2h(regs->rsp + gdt_desc_cache[SS].base);
+            regs->rip = *(stack++);
+            regs->cs  = load_seg_reg(CS, *(stack++) & 0xffff);
+            regs->rsp = (uintptr_t)adr_h2g(stack);
             return true;
+        }
+        case iret:
+        {
+            uint32_t *stack = adr_g2h(regs->rsp + gdt_desc_cache[SS].base);
+            int old_priv = gdt_desc_cache[CS].privilege;
+
+            regs->rip = *(stack++);
+            regs->cs  = load_seg_reg(CS, *(stack++) & 0xffff);
+            regs->eflags = *(stack++);
+            iopl = (regs->eflags >> 12) & 3;
+            int_flag = regs->eflags & (1 << 9);
+
+            if (old_priv == gdt_desc_cache[CS].privilege)
+                regs->rsp = (uintptr_t)adr_h2g(stack);
+            else
+            {
+                regs->rsp = *(stack++);
+                regs->ss  = load_seg_reg(SS, *(stack++) & 0xffff);
+            }
+            return true;
+        }
         case mov_sr_r16:
             assert((int)(uintptr_t)instr->target >= 0); // TODO: #UD
             *(uint16_t *)((uintptr_t)regs + sreg_ofs[(uintptr_t)instr->target]) = load_seg_reg((uintptr_t)instr->target, *instr->source & 0xffff);
@@ -350,7 +374,8 @@ bool emulate(struct user_regs_struct *regs)
         return false;
 
 
-    regs->rip = (uintptr_t)instr_stream;
+    if ((instr.op != retf) && (instr.op != iret))
+        regs->rip = (uintptr_t)adr_h2g(instr_stream);
 
 
     return true;

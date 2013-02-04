@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -61,8 +62,11 @@ uint32_t vm_execute_syscall(uint32_t sysc_no, int parcount, ...)
     ptrace(PTRACE_CONT, vm_pid, NULL, NULL);
 
 
-    int status;
-    waitpid(vm_pid, &status, 0);
+    int status, ret;
+
+    do
+        ret = waitpid(vm_pid, &status, 0);
+    while ((ret < 0) && (errno = EINTR));
 
     assert(WIFSTOPPED(status));
     assert(WSTOPSIG(status) == SIGSEGV);

@@ -109,3 +109,14 @@ uint16_t load_seg_reg(int reg, uint16_t value)
 
     return value | 7; // LDT and user
 }
+
+
+uint16_t seg_h2g(uint16_t sval)
+{
+    assert((sval & 7) == 7);
+
+
+    struct gdt_desc *gdt = (struct gdt_desc *)adr_g2h(gdtr.base) + (sval & 0xfff8);
+
+    return (sval & 0xfff8) | ((gdt->type & 0x60) >> 5);
+}

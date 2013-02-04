@@ -1,6 +1,7 @@
 #define _XOPEN_SOURCE
 #define _XOPEN_SOURCE_EXTENDED
 
+#include <assert.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -87,6 +88,9 @@ bool handle_segfault(pid_t vm_pid)
     ptrace(PTRACE_GETSIGINFO, vm_pid, NULL, &siginfo);
 
 
+    assert(siginfo.si_signo == SIGSEGV);
+
+
     switch (siginfo.si_code)
     {
         case SEGV_MAPERR:
@@ -118,6 +122,8 @@ bool handle_segfault(pid_t vm_pid)
             }
     }
 
+
+    fprintf(stderr, "Cannot handle segfault.\n");
 
     unhandled_segfault(vm_pid, &siginfo, &regs);
 

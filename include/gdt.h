@@ -20,6 +20,8 @@ struct gdt_desc
 
 
 void gdt_update(void);
+
 uint16_t load_seg_reg(int reg, uint16_t value);
+uint16_t seg_h2g(uint16_t sval);
 
 #endif

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -17,6 +18,8 @@ extern void *vm_comm_area;
 extern pid_t vm_pid;
 
 extern int call_int_vector;
+
+volatile bool no_irqs_nao = false;
 
 
 static bool intr(int vector, uint32_t err_code, bool ext)
@@ -39,10 +42,14 @@ void execute_vm(void)
 
     for (;;)
     {
-        int status;
-        waitpid(vm_pid, &status, 0);
+        int status, ret;
+        do
+            ret = waitpid(vm_pid, &status, 0);
+        while ((ret < 0) && (errno = EINTR));
 
         assert(WIFSTOPPED(status));
+
+        no_irqs_nao = true;
 
         switch (WSTOPSIG(status))
         {
@@ -81,6 +88,8 @@ void execute_vm(void)
                 if (!intr(3, 0, false)) // #BP
                     return;
         }
+
+        no_irqs_nao = false;
 
         ptrace(PTRACE_CONT, vm_pid, NULL, NULL);
     }
