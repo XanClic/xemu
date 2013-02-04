@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
+#include "devices.h"
 #include "elf.h"
 #include "execute.h"
 #include "forker.h"
@@ -199,6 +200,8 @@ int main(int argc, char *argv[])
 
     pthread_t irq_thread_var;
     pthread_create(&irq_thread_var, NULL, &irq_thread, NULL);
+
+    init_pit();
 
     execute_vm();
 

@@ -6,7 +6,7 @@
 
 
 extern uint32_t cr[8];
-extern bool int_flag;
+extern volatile bool int_flag;
 extern int iopl;
 
 extern uint16_t tr;

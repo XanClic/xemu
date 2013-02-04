@@ -128,16 +128,17 @@ void *irq_thread(void *arg)
 
     while (!settle_threads)
     {
-        while (!execute_irqs)
+        while (!execute_irqs || !int_flag)
             pthread_cond_wait(&irq_update, &cond_mtx);
 
+        printf("CALLIN' EEEET (0x%04x)\n", execute_irqs);
 
         int first = ffs(execute_irqs) - 1;
 
         if (first == 2)
         {
             // dafuq? (IRQ 2 is slave)
-            execute_irqs = 0;
+            execute_irqs &= ~(1 << 2);
             continue;
         }
 
@@ -156,6 +157,10 @@ void *irq_thread(void *arg)
         in_irq[0] = true;
         if (first >= 8)
             in_irq[1] = true;
+
+        execute_irqs &= ~(1 << first);
+
+        printf("thru, first is %i\n", first);
 
 
         call_int_vector = irq_base[first >= 8] + first - 8;

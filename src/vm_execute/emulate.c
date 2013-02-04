@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -11,11 +12,14 @@
 #include "execute.h"
 #include "gdt.h"
 #include "memory.h"
+#include "paging.h"
 #include "pio.h"
 #include "system_state.h"
 
 
 extern pid_t vm_pid;
+
+extern pthread_cond_t irq_update;
 
 
 enum opcode
@@ -307,6 +311,7 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
             return true;
         case sti:
             int_flag = true;
+            pthread_cond_broadcast(&irq_update);
             return true;
         case hlt:
             if (!int_flag)
