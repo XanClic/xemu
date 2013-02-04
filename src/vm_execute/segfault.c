@@ -22,7 +22,7 @@
 static const const char *seg_name[] = { "cs", "ds", "es", "fs", "gs", "ss" };
 
 
-static void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_struct *regs)
+void unhandled_segfault(pid_t pid, siginfo_t *siginfo, struct user_regs_struct *regs)
 {
 
     fprintf(stderr, "\n=== unhandled segfault ===\n\n");
@@ -89,9 +89,6 @@ bool handle_segfault(pid_t vm_pid)
 
     switch (siginfo.si_code)
     {
-        case SEGV_ACCERR:
-            // TODO: Throw exception
-            break;
         case SEGV_MAPERR:
             if (trymap((uintptr_t)siginfo.si_addr))
             {
@@ -99,8 +96,20 @@ bool handle_segfault(pid_t vm_pid)
                 ptrace(PTRACE_SETREGS, vm_pid, &regs, &regs);
                 return true;
             }
-            // TODO: Throw exception (if paging is enabled)
-            break;
+
+        case SEGV_ACCERR:
+            if (!(cr[0] & (1 << 31)))
+                break;
+
+            cr[2] = (uintptr_t)siginfo.si_addr;
+            if (!execute_interrupt(&regs, 14, get_page_error_code(&siginfo, &regs), false)) // #PF
+                return false;
+            else
+            {
+                ptrace(PTRACE_SETREGS, vm_pid, &regs, &regs);
+                return true;
+            }
+
         case SI_KERNEL:
             if (emulate(&regs))
             {

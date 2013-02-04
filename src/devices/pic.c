@@ -1,15 +1,25 @@
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <strings.h>
+#include <sys/types.h>
 
 #define DEVICE_NAME "PIC"
 
 #include "device.h"
+#include "system_state.h"
 
 
 extern volatile bool settle_threads;
-extern pthread_cond_t irq_update;
+
+volatile int execute_irqs;
+pthread_cond_t irq_update;
+
+extern int call_int_vector;
+
+extern pid_t vm_pid;
 
 
 static bool icw4[2] = { false, false }, have_slave = true, auto_eoi[2] = { false, false }, in_irq[2] = { false, false };
@@ -109,25 +119,49 @@ void pic_out8(uint16_t port, uint8_t val)
 
 void *irq_thread(void *arg)
 {
-    while (!settle)
-    {
+    (void)arg;
 
+
+    pthread_mutex_t cond_mtx = PTHREAD_MUTEX_INITIALIZER;
+
+    pthread_mutex_lock(&cond_mtx);
+
+    while (!settle_threads)
+    {
+        while (!execute_irqs)
+            pthread_cond_wait(&irq_update, &cond_mtx);
+
+
+        int first = ffs(execute_irqs) - 1;
+
+        if (first == 2)
+        {
+            // dafuq? (IRQ 2 is slave)
+            execute_irqs = 0;
+            continue;
+        }
+
+        // check slave before IRQs 3..7 (since he uses master IRQ 2)
+        if ((first > 2) && (first < 8) && ffs(execute_irqs & 0xff00))
+            first = ffs(execute_irqs & 0xff00) - 1;
+
+
+        if (in_irq[0] || ((first >= 8) && in_irq[1]))
+            continue; // still in IRQ
+
+        if (((first < 8) && (masked_irqs[0] & (1 << first))) || ((first >= 8) && ((masked_irqs[0] & (1 << 2)) || (masked_irqs[1] & (1 << (first - 8))))))
+            continue; // masked
+
+
+        in_irq[0] = true;
+        if (first >= 8)
+            in_irq[1] = true;
+
+
+        call_int_vector = irq_base[first >= 8] + first - 8;
+
+        kill(vm_pid, SIGUSR1);
     }
 
     return NULL;
-}
-
-int call_irq(int irq)
-{
-    if (in_irq[
-    if (irq < 8)
-    {
-        in_irq[0] = true;
-        return irq_base[0] + irq;
-    }
-    else if (irq < 16)
-    {
-        in_irq[0] = true;
-        in_irq[1]
-    }
 }

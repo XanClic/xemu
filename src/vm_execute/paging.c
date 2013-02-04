@@ -52,7 +52,7 @@ bool trymap(uintptr_t addr)
     int pti = (addr >> 12) & 0x3ff;
 
 
-    uint32_t *page_dir = adr_p2h(cr[3]);
+    uint32_t *page_dir = adr_p2h(cr[3] & ~0x3ff);
 
     uint32_t pde = page_dir[pdi];
 
@@ -89,4 +89,33 @@ bool trymap(uintptr_t addr)
 
 
     return true;
+}
+
+
+int get_page_error_code(siginfo_t *siginfo, struct user_regs_struct *regs)
+{
+    uintptr_t addr = (uintptr_t)siginfo->si_addr;
+
+    bool present = (siginfo->si_code == SEGV_ACCERR);
+    bool infetch = (regs->rip == addr);
+    bool user    = (gdt_desc_cache[CS].privilege == 3);
+
+    bool write   = false;
+
+
+    if (present && !infetch)
+    {
+        int pdi =  addr >> 22;
+        int pti = (addr >> 12) & 0x3ff;
+
+        uint32_t pde = ((uint32_t *)adr_p2h(cr[3] & ~0x3ff))[pdi];
+
+        if (pde & MAP_4M)
+            write = !(pde & MAP_RW);
+        else
+            write = !(((uint32_t *)adr_p2h(pde & ~0x3ff))[pti] & MAP_RW);
+    }
+
+
+    return ((int)infetch << 4) | ((int)user << 2) | ((int)write << 1) | (int)present;
 }

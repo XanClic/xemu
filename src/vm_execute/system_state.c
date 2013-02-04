@@ -11,3 +11,6 @@ int iopl = 0;
 
 struct Xdtr gdtr, idtr;
 struct gdt_desc_cache gdt_desc_cache[SEL_COUNT];
+
+volatile bool settle_threads = false;
+int call_int_vector = -1;

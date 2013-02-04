@@ -29,4 +29,8 @@ extern struct gdt_desc_cache
     bool present, code, rw, size;
 } gdt_desc_cache[SEL_COUNT];
 
+
+extern volatile bool settle_threads;
+extern int call_int_vector;
+
 #endif

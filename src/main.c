@@ -3,6 +3,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,11 +20,21 @@
 
 extern void init_sdl(void);
 
+extern void *irq_thread(void *arg);
+
+
+volatile bool settle_threads;
+
+extern pthread_cond_t irq_update;
+
 
 static void help(void)
 {
     fprintf(stderr, "Usage: xemu --kernel/-k <mboot elf> [--module/-m <mod>]*\n");
 }
+
+
+void unlink_shm(void);
 
 
 int main(int argc, char *argv[])
@@ -177,14 +188,32 @@ int main(int argc, char *argv[])
     mm[3].type   = 1;
 
 
+    atexit(&unlink_shm);
+
+
     init_sdl();
 
 
     fork_vm(kernel_entry);
 
 
+    pthread_t irq_thread_var;
+    pthread_create(&irq_thread_var, NULL, &irq_thread, NULL);
+
     execute_vm();
+
+    settle_threads = true;
+    pthread_cond_broadcast(&irq_update);
+
+    pthread_join(irq_thread_var, NULL);
 
 
     return EXIT_SUCCESS;
+}
+
+
+void unlink_shm(void)
+{
+    shm_unlink("/xemu_phys_ram");
+    shm_unlink("/xemu_vm_comm");
 }

@@ -90,6 +90,8 @@ uint16_t load_seg_reg(int reg, uint16_t value)
     assert(!(value & 4));
 
 
+    // FIXME: Exceptions
+
     struct gdt_desc *gdt = (struct gdt_desc *)adr_g2h(gdtr.base) + (value >> 3);
 
     gdt_desc_cache[reg].base  = gdt->base_lo | (gdt->base_mi << 16) | (gdt->base_hi << 24);

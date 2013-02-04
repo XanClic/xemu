@@ -61,6 +61,6 @@ end
 
 child = 'src__child__child.asm.o'
 
-exec("#{cld} #{cldflags} #{objs.reject { |o| File.basename(o) == child }.map { |o| "'#{o}'" } * ' '} -o xemu -lrt #{`sdl-config --cflags --libs`.gsub("\n", ' ')}")
+exec("#{cld} #{cldflags} #{objs.reject { |o| File.basename(o) == child }.map { |o| "'#{o}'" } * ' '} -o xemu -lrt -lpthread #{`sdl-config --cflags --libs`.gsub("\n", ' ')}")
 
 exec("#{asmld} #{asmldflags} obj/#{child} -o child")

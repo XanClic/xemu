@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
+#include <sys/mman.h>
 
 #include "memory.h"
 
@@ -105,7 +106,7 @@ Uint32 update_screen(Uint32 intvl, void *param)
         switch(event.type)
         {
             case SDL_QUIT:
-                exit(EXIT_FAILURE);
+                exit(EXIT_SUCCESS);
         }
     }
 
