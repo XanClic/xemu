@@ -5,6 +5,8 @@
 
 uint32_t cr[8] = { 0x00000001, 0, 0, 0, 0x00000000, 0, 0, 0 };
 
+uint16_t tr;
+
 bool int_flag = false;
 
 int iopl = 0;

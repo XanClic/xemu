@@ -9,6 +9,7 @@
 void full_paging_update(void);
 
 bool trymap(uintptr_t addr);
+void invalidate_page(uintptr_t addr);
 
 int get_page_error_code(siginfo_t *siginfo, struct user_regs_struct *regs);
 

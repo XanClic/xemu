@@ -9,6 +9,8 @@ extern uint32_t cr[8];
 extern bool int_flag;
 extern int iopl;
 
+extern uint16_t tr;
+
 extern struct Xdtr
 {
     uint16_t limit;

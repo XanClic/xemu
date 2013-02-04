@@ -57,7 +57,16 @@ bool trymap(uintptr_t addr)
     uint32_t pde = page_dir[pdi];
 
     if (!(pde & MAP_PR))
+    {
+        if (!pdi)
+            vm_execute_syscall(91, 2, 0x1000, (1 << 22) - 0x1000);
+        else
+            vm_execute_syscall(91, 2, (uint32_t)pdi << 22, 1 << 22);
+
+        munmap(adr_g2h((uintptr_t)pdi << 22), 1 << 22);
+
         return false;
+    }
 
     if (pde & MAP_4M)
     {
@@ -79,7 +88,13 @@ bool trymap(uintptr_t addr)
     uint32_t pte = page_tbl[pti];
 
     if (!(pte & MAP_PR))
+    {
+        vm_execute_syscall(91, 2, (uint32_t)addr & ~0xfff, 0x1000);
+
+        munmap(adr_g2h((uintptr_t)addr & ~0xfff), 0x1000);
+
         return false;
+    }
 
     uint32_t phys = pte & ~0xfff;
 
@@ -89,6 +104,12 @@ bool trymap(uintptr_t addr)
 
 
     return true;
+}
+
+
+void invalidate_page(uintptr_t addr)
+{
+    trymap(addr);
 }
 
 

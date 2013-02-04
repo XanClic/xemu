@@ -22,6 +22,7 @@ enum opcode
 {
     mov_sr_r16  = 0x8e,
     retf        = 0xcb,
+    out_ii_al   = 0xe6,
     jmp_far     = 0xea,
     out_dx_al   = 0xee,
     hlt         = 0xf4,
@@ -29,9 +30,11 @@ enum opcode
     sti         = 0xfb,
     mov_r32_crX = 0x0f20,
     mov_crX_r32 = 0x0f22,
+    ltr         = 0x0f00,
     lXdt        = 0x0f01,
     lgdt        = 0x0f0110,
-    lidt        = 0x0f0118
+    lidt        = 0x0f0118,
+    invlpg      = 0x0f0138
 };
 
 enum operands
@@ -39,7 +42,8 @@ enum operands
     NONE,
     MOD_RM_R,
     FAR_PTR32,
-    PIO_DX
+    PIO_DX,
+    PIO_IMM
 };
 
 
@@ -64,7 +68,11 @@ typedef struct
 
         struct
         {
-            uint16_t *port;
+            union
+            {
+                uint16_t *port;
+                uint8_t *port8;
+            };
             union
             {
                 void *valp;
@@ -95,6 +103,7 @@ static bool decode_opcode(uint8_t **stream, instruction_t *instr)
         case mov_crX_r32:
         case lXdt:
         case mov_sr_r16:
+        case ltr:
             instr->operand_type = MOD_RM_R;
             instr->selector_reg = DS;
             break;
@@ -110,6 +119,9 @@ static bool decode_opcode(uint8_t **stream, instruction_t *instr)
             break;
         case out_dx_al:
             instr->operand_type = PIO_DX;
+            break;
+        case out_ii_al:
+            instr->operand_type = PIO_IMM;
             break;
         default:
             return false;
@@ -155,7 +167,7 @@ size_t sreg_ofs[6] = {
 // TODO: Segment limit checks
 
 
-static bool decode_operands(uint8_t **stream, instruction_t *instr, const struct user_regs_struct *regs)
+static bool decode_operands(uint8_t **stream, instruction_t *instr, struct user_regs_struct *regs)
 {
     switch (instr->operand_type)
     {
@@ -215,8 +227,11 @@ static bool decode_operands(uint8_t **stream, instruction_t *instr, const struct
                         instr->op = lgdt;
                     else if (r == 3)
                         instr->op = lidt;
+                    else if (r == 7)
+                        instr->op = invlpg;
                     else
                         return false;
+                case ltr:
                     instr->source = rmptr;
                     return true;
                 case mov_sr_r16:
@@ -235,7 +250,11 @@ static bool decode_operands(uint8_t **stream, instruction_t *instr, const struct
             return true;
         case PIO_DX:
             instr->port = (uint16_t *)&regs->rdx;
-            instr->valp = (void *)&regs->rax;
+            instr->valp = &regs->rax;
+            return true;
+        case PIO_IMM:
+            instr->port8 = (*stream)++;
+            instr->valp  = &regs->rax;
             return true;
     }
 
@@ -262,6 +281,12 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
         case lidt:
             idtr.limit = *(uint16_t *)instr->source;
             idtr.base  = *(uint32_t *)((uint16_t *)instr->source + 1);
+            return true;
+        case ltr:
+            tr = *(uint16_t *)instr->source;
+            return true;
+        case invlpg:
+            invalidate_page((uintptr_t)instr->source);
             return true;
         case jmp_far:
             regs->cs  = load_seg_reg(CS, instr->far_ptr.seg);
@@ -295,6 +320,9 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
             return true;
         case out_dx_al:
             out8(*instr->port, *instr->val8);
+            return true;
+        case out_ii_al:
+            out8(*instr->port8, *instr->val8);
             return true;
     }
 
