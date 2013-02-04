@@ -1,0 +1,133 @@
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#define DEVICE_NAME "PIC"
+
+#include "device.h"
+
+
+extern volatile bool settle_threads;
+extern pthread_cond_t irq_update;
+
+
+static bool icw4[2] = { false, false }, have_slave = true, auto_eoi[2] = { false, false }, in_irq[2] = { false, false };
+static int irq_base[2] = { 0x08, 0x70 }, masked_irqs[2] = { 0, 0 }, in_init[2] = { 0, 0 };
+
+void pic_out8(uint16_t port, uint8_t val)
+{
+    bool slave = !!(port & 0x80);
+
+    if (slave && !have_slave)
+    {
+        dprintf("Oops, tried to access slave being not available!\n");
+        return; //Einfach ignorieren
+    }
+
+    if (!(port & 1))
+    {
+        //Befehl
+        if (val & 0x10)
+        {
+            if (in_init[slave])
+                dprintf("%i: Warning: Was already in init mode, reiniting\n", slave);
+            dprintf("%i: Starting initialisation.\n", slave);
+
+            in_init[slave] = 1;
+
+            icw4[slave] = !!(val & 0x01);
+
+            if (!slave)
+            {
+                if (val & 0x02)
+                {
+                    dprintf("Hu? We don't have a slave... Funny, but... OK.\n");
+                    have_slave = false;
+                }
+                else
+                {
+                    dprintf("OK, slave is available.\n");
+                    have_slave = true;
+                }
+            }
+        }
+        else if (val == 0x20) // EOI
+            in_irq[slave] = false;
+    }
+    else
+    {
+        switch (in_init[slave])
+        {
+            case 0:
+                //IRQs maskieren
+                masked_irqs[slave] = val;
+                dprintf("%i: Remasked IRQs: 0x%02X\n", slave, masked_irqs[slave]);
+                break;
+            case 1:
+                //ICW2
+                if (val & 0x07)
+                    dprintf("%i: Base %i is not multiple of 8.\n", slave, val);
+                irq_base[slave] = val & 0xF8;
+                dprintf("%i: New IRQ base: %i\n", slave, val & 0xF8);
+                if (have_slave)
+                    in_init[slave] = 2;
+                else if (icw4[slave])
+                    in_init[slave] = 3;
+                else
+                {
+                    in_init[slave] = 0;
+                    dprintf("%i: Init done.\n", slave);
+                }
+                break;
+            case 2:
+                //ICW3
+                if (!slave && (val != 0x04))
+                    dprintf("%i: Slaves should be at 0x%02X, but there's one being at 0x04.\n", slave, val);
+                else if (slave && (val != 2))
+                    dprintf("%i: I should be at %i, but I'm at 2.\n", slave, val);
+                if (icw4[slave])
+                    in_init[slave] = 3;
+                else
+                {
+                    in_init[slave] = 0;
+                    dprintf("%i: Init done.\n", slave);
+                }
+                break;
+            case 3:
+                //ICW4
+                if (!(val & 0x01))
+                    dprintf("%i: Hu, not for PCs? Ignoring that shit.\n", slave);
+                auto_eoi[slave] = !!(val & 0x02);
+                in_init[slave] = 0;
+                dprintf("%i: Init done.\n", slave);
+                break;
+        }
+    }
+}
+
+
+void *irq_thread(void *arg)
+{
+    while (!settle)
+    {
+
+    }
+
+    return NULL;
+}
+
+int call_irq(int irq)
+{
+    if (in_irq[
+    if (irq < 8)
+    {
+        in_irq[0] = true;
+        return irq_base[0] + irq;
+    }
+    else if (irq < 16)
+    {
+        in_irq[0] = true;
+        in_irq[1]
+    }
+}

@@ -9,5 +9,5 @@ bool int_flag = false;
 
 int iopl = 0;
 
-struct Xdtr gdtr;
+struct Xdtr gdtr, idtr;
 struct gdt_desc_cache gdt_desc_cache[SEL_COUNT];

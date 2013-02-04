@@ -13,7 +13,7 @@ extern struct Xdtr
 {
     uint16_t limit;
     uint32_t base;
-} gdtr;
+} gdtr, idtr;
 
 
 enum selectors

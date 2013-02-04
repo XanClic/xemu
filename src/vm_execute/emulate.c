@@ -11,6 +11,7 @@
 #include "execute.h"
 #include "gdt.h"
 #include "memory.h"
+#include "pio.h"
 #include "system_state.h"
 
 
@@ -22,8 +23,10 @@ enum opcode
     mov_sr_r16  = 0x8e,
     retf        = 0xcb,
     jmp_far     = 0xea,
+    out_dx_al   = 0xee,
     hlt         = 0xf4,
     cli         = 0xfa,
+    sti         = 0xfb,
     mov_r32_crX = 0x0f20,
     mov_crX_r32 = 0x0f22,
     lXdt        = 0x0f01,
@@ -35,7 +38,8 @@ enum operands
 {
     NONE,
     MOD_RM_R,
-    FAR_PTR32
+    FAR_PTR32,
+    PIO_DX
 };
 
 
@@ -57,6 +61,18 @@ typedef struct
             uint32_t ofs;
             uint16_t seg;
         } far_ptr;
+
+        struct
+        {
+            uint16_t *port;
+            union
+            {
+                void *valp;
+                uint8_t *val8;
+                uint16_t *val16;
+                uint32_t *val32;
+            };
+        };
     };
 } instruction_t;
 
@@ -87,9 +103,13 @@ static bool decode_opcode(uint8_t **stream, instruction_t *instr)
             instr->selector_reg = CS;
             break;
         case cli:
+        case sti:
         case hlt:
         case retf:
             instr->operand_type = NONE;
+            break;
+        case out_dx_al:
+            instr->operand_type = PIO_DX;
             break;
         default:
             return false;
@@ -213,6 +233,10 @@ static bool decode_operands(uint8_t **stream, instruction_t *instr, const struct
             instr->far_ptr.seg = *(uint16_t *)*stream;
             *stream += 2;
             return true;
+        case PIO_DX:
+            instr->port = (uint16_t *)&regs->rdx;
+            instr->valp = (void *)&regs->rax;
+            return true;
     }
 
     return false;
@@ -235,6 +259,10 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
             gdtr.base  = *(uint32_t *)((uint16_t *)instr->source + 1);
             gdt_update();
             return true;
+        case lidt:
+            idtr.limit = *(uint16_t *)instr->source;
+            idtr.base  = *(uint32_t *)((uint16_t *)instr->source + 1);
+            return true;
         case jmp_far:
             regs->cs  = load_seg_reg(CS, instr->far_ptr.seg);
             regs->rip = instr->far_ptr.ofs;
@@ -252,6 +280,9 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
         case cli:
             int_flag = false;
             return true;
+        case sti:
+            int_flag = true;
+            return true;
         case hlt:
             if (!int_flag)
             {
@@ -261,6 +292,9 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
                     sleep(1);
             }
             // TODO
+            return true;
+        case out_dx_al:
+            out8(*instr->port, *instr->val8);
             return true;
     }
 
