@@ -345,7 +345,7 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
                 for (;;)
                     sleep(1);
             }
-            // TODO
+            *(uint8_t *)adr_g2h(regs->rip + gdt_desc_cache[CS].base) = 0x90; // nop and FIXME
             return true;
         case out_dx_al:
             out8(*instr->port, *instr->val8);
@@ -361,7 +361,7 @@ static bool execute(instruction_t *instr, struct user_regs_struct *regs)
 
 bool emulate(struct user_regs_struct *regs)
 {
-    uint8_t *instr_stream = adr_g2h(regs->rip);
+    uint8_t *instr_stream = adr_g2h(regs->rip + gdt_desc_cache[CS].base);
 
     instruction_t instr = { 0 };
     if (!decode_opcode(&instr_stream, &instr))
@@ -375,7 +375,7 @@ bool emulate(struct user_regs_struct *regs)
 
 
     if ((instr.op != retf) && (instr.op != iret))
-        regs->rip = (uintptr_t)adr_h2g(instr_stream);
+        regs->rip = (uintptr_t)adr_h2g(instr_stream) - gdt_desc_cache[CS].base;
 
 
     return true;
