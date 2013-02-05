@@ -31,7 +31,9 @@ extern pthread_cond_t irq_update;
 
 static void help(void)
 {
-    fprintf(stderr, "Usage: xemu --kernel/-k <mboot elf> [--module/-m <mod>]*\n");
+    fprintf(stderr, "Usage: xemu --kernel/-k <mboot elf> [--module/-m <mod>]*\n\n");
+    fprintf(stderr, "Every -k/-m argument may be followed by a --cmdline/--as/-a <cmdline>\n");
+    fprintf(stderr, "specifying the desired multiboot command line (default is the given file name).\n");
 }
 
 
@@ -41,8 +43,13 @@ void unlink_shm(void);
 int main(int argc, char *argv[])
 {
     const char *kname = NULL;
+    int kcmd;
     int modules[32]; // FIXME
+    int modcmds[32];
+    int *last_cmd_ptr = NULL;
     int mod_count = 0;
+
+    memset(modcmds, 0xff, sizeof(modcmds)); // FIXME
 
     for (int i = 1; i < argc; i++)
     {
@@ -59,6 +66,8 @@ int main(int argc, char *argv[])
                 return EXIT_FAILURE;
             }
             kname = argv[++i];
+            kcmd  = i;
+            last_cmd_ptr = &kcmd;
         }
         else if (!strcmp(argv[i], "--module") || !strcmp(argv[i], "-m"))
         {
@@ -67,7 +76,19 @@ int main(int argc, char *argv[])
                 help();
                 return EXIT_FAILURE;
             }
-            modules[mod_count++] = ++i;
+            modules[mod_count] = ++i;
+            modcmds[mod_count] = i;
+            last_cmd_ptr = &modcmds[mod_count++];
+        }
+        else if (!strcmp(argv[i], "--cmdline") || !strcmp(argv[i], "--as") || !strcmp(argv[i], "-a"))
+        {
+            if ((i == argc - 1) || (last_cmd_ptr == NULL))
+            {
+                help();
+                return EXIT_FAILURE;
+            }
+            *last_cmd_ptr = ++i;
+            last_cmd_ptr  = NULL;
         }
         else
         {
@@ -135,7 +156,7 @@ int main(int argc, char *argv[])
     mbi->mmap_addr = 0x00011000;
 
 
-    strcpy(adr_g2h(mbi->cmdline), kname);
+    strcpy(adr_g2h(mbi->cmdline), argv[kcmd]);
 
 
     uintptr_t base = 0x00013000;
@@ -162,8 +183,8 @@ int main(int argc, char *argv[])
         mods[i].mod_end   = base + sz;
         mods[i].string    = base + sz;
 
-        size_t len = strlen(argv[modules[i]]) + 1;
-        memcpy(adr_g2h(mods[i].string), argv[modules[i]], len);
+        size_t len = strlen(argv[modcmds[i]]) + 1;
+        memcpy(adr_g2h(mods[i].string), argv[modcmds[i]], len);
 
         // Sieht schöner aus. GRUB und so scheinen das auch zu machen.
         base = (base + sz + len + 4095) & ~0xfff;
